@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useFormStatus } from 'react-dom';
-import { useActionState } from 'react';
+import { useFormStatus, useActionState } from 'react';
 import { AlertCircle, Bot, Send, User } from 'lucide-react';
 import { askChatbot, type ChatState } from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Route } from '@/lib/types';
+import { useUser, useFirestore } from '@/firebase';
+import { saveTrip } from '@/firebase/firestore/trips';
 
 const initialState: ChatState = {
   messages: [
@@ -43,6 +44,8 @@ export default function ChatView({ results }: { results: Route[] | null }) {
   const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
   React.useEffect(() => {
     const lastMessage = state.messages[state.messages.length - 1];
@@ -53,7 +56,31 @@ export default function ChatView({ results }: { results: Route[] | null }) {
         description: lastMessage.content,
       });
     }
-  }, [state.messages, toast]);
+
+    if (lastMessage?.role === 'assistant' && lastMessage.bookingDetails) {
+        const { routeId, confirmationMessage } = lastMessage.bookingDetails;
+
+        if (!user || !firestore) {
+            toast({ variant: 'destructive', title: 'Please log in to book a trip.' });
+            return;
+        }
+
+        const routeToBook = results?.find(r => r.id === routeId);
+
+        if (routeToBook) {
+            saveTrip(firestore, user.uid, routeToBook)
+                .then(() => {
+                    toast({ title: 'Trip Booked!', description: confirmationMessage });
+                })
+                .catch((error: any) => {
+                    console.error("Booking via chat failed", error);
+                    toast({ variant: 'destructive', title: 'Booking Failed', description: error.message || 'An unknown error occurred.' });
+                });
+        } else {
+            toast({ variant: 'destructive', title: 'Booking Failed', description: 'Could not find the selected route to book.' });
+        }
+    }
+  }, [state.messages, toast, user, firestore, results]);
 
   React.useEffect(() => {
     if (scrollAreaRef.current) {

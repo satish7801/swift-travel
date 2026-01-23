@@ -9,6 +9,10 @@ export type ChatState = {
     content: string;
     id: number;
     suggestedReplies?: string[];
+    bookingDetails?: {
+        routeId: string;
+        confirmationMessage: string;
+    }
   }[];
 };
 
@@ -57,6 +61,7 @@ export async function askChatbot(state: ChatState, formData: FormData): Promise<
           content: aiResponse.response,
           id: Date.now() + 1,
           suggestedReplies: aiResponse.suggestedReplies,
+          bookingDetails: aiResponse.bookingDetails,
         },
       ],
     };

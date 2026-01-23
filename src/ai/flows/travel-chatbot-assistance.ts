@@ -20,6 +20,10 @@ export type TravelChatbotAssistanceInput = z.infer<typeof TravelChatbotAssistanc
 const TravelChatbotAssistanceOutputSchema = z.object({
   response: z.string().describe('The chatbot response to the user query.'),
   suggestedReplies: z.array(z.string()).optional().describe('A list of 2-3 short, relevant follow-up questions the user might ask.'),
+  bookingDetails: z.object({ 
+    routeId: z.string().describe("The ID of the route to be booked."),
+    confirmationMessage: z.string().describe("A friendly confirmation message for the user, e.g., 'Your trip to Goa has been booked!'")
+  }).optional().describe("Details for booking a trip if the user confirms.")
 });
 export type TravelChatbotAssistanceOutput = z.infer<typeof TravelChatbotAssistanceOutputSchema>;
 
@@ -38,6 +42,8 @@ Based on the conversation so far, also provide a few short, relevant suggested f
 
 {{#if context}}
 The user is currently viewing a list of travel routes. If their query seems to be about these routes, use the following JSON data to form your answer. For example, if they ask "which is the cheapest?", you should find the route with the lowest price from the JSON. If the query is unrelated to the routes, you can ignore this context.
+
+If the user explicitly asks to book a trip (e.g., "Book the flight to Mumbai", "Confirm the second option"), identify the correct 'id' of the route from the context. Then, populate the 'bookingDetails' field with the 'routeId' and a friendly 'confirmationMessage' for the user. Your main 'response' should also confirm the action, for example: "Done! I've saved the trip to your account."
 
 Route context:
 {{{context}}}
