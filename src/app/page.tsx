@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { searchRoutesAction } from './search-actions';
 import { parseDuration } from '@/lib/utils';
 
-export type SortKey = 'default' | 'price' | 'duration';
+export type SortKey = 'default' | 'price' | 'duration' | 'transfers';
 
 export default function Home() {
   const [searchResults, setSearchResults] = React.useState<Route[] | null>(null);
@@ -50,6 +50,9 @@ export default function Home() {
       }
       if (sortBy === 'duration') {
         return parseDuration(a.totalDuration) - parseDuration(b.totalDuration);
+      }
+      if (sortBy === 'transfers') {
+        return a.legs.length - b.legs.length;
       }
       return 0;
     });
