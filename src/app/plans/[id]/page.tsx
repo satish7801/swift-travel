@@ -9,18 +9,58 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Youtube, Wallet, CalendarDays, Car, ShoppingBag, Lightbulb, ArrowLeft, Share2, Copy, Check, Loader2, Twitter, Mail } from 'lucide-react';
+import { Youtube, Wallet, CalendarDays, Car, ShoppingBag, Lightbulb, ArrowLeft, Share2, Copy, Check, Loader2, Twitter, Mail, Volume2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { summarizeItineraryAction } from '../actions';
+import { summarizeItineraryAction, generateAudioSummaryAction } from '../actions';
 
-function ItineraryOverviewDisplay({ overview }: { overview: NonNullable<SavedItinerary['overview']> }) {
+function ItineraryOverviewDisplay({ overview, plan }: { overview: NonNullable<SavedItinerary['overview']>, plan: SavedItinerary }) {
+    const { toast } = useToast();
+    const [isGeneratingAudio, setIsGeneratingAudio] = React.useState(false);
+    const [audioDataUri, setAudioDataUri] = React.useState<string | null>(null);
+
+    const handleGenerateAudio = async () => {
+        setIsGeneratingAudio(true);
+        setAudioDataUri(null);
+
+        // Create a simplified text version of the overview for TTS
+        const textToSpeak = `
+            Welcome to your trip to ${plan.city}!
+            ${overview.introduction}
+            Here is your day-by-day plan:
+            ${overview.dailyBreakdown.map(day => `Day ${day.day}: ${day.dayTitle}. ${day.narrative}`).join('\n')}
+            ${overview.conclusion}
+        `;
+
+        const result = await generateAudioSummaryAction(textToSpeak);
+
+        if (result.error) {
+            toast({ variant: 'destructive', title: 'Audio Generation Failed', description: result.error });
+        } else if (result.audioDataUri) {
+            setAudioDataUri(result.audioDataUri);
+        }
+        setIsGeneratingAudio(false);
+    };
+    
     return (
         <Card>
-            <CardHeader className="text-center p-6">
+            <CardHeader className="text-center p-6 relative">
                 <h2 className="text-4xl font-bold font-headline text-primary">{overview.title}</h2>
                 <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">{overview.introduction}</p>
+                <div className="absolute top-4 right-4">
+                    <Button onClick={handleGenerateAudio} variant="outline" size="icon" disabled={isGeneratingAudio}>
+                        {isGeneratingAudio ? <Loader2 className="h-5 w-5 animate-spin" /> : <Volume2 className="h-5 w-5" />}
+                        <span className="sr-only">Listen to Summary</span>
+                    </Button>
+                </div>
+                {audioDataUri && (
+                    <div className="mt-4 flex justify-center">
+                        <audio controls src={audioDataUri} className="w-full max-w-md">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                )}
             </CardHeader>
             <CardContent className="p-6 space-y-8">
                 {/* Quick Facts Section */}
@@ -343,7 +383,7 @@ export default function SavedPlanPage() {
                 </Dialog>
             </div>
             
-            {plan.overview ? <ItineraryOverviewDisplay overview={plan.overview} /> : <BasicItineraryDisplay plan={plan} />}
+            {plan.overview ? <ItineraryOverviewDisplay overview={plan.overview} plan={plan} /> : <BasicItineraryDisplay plan={plan} />}
         </div>
     );
 }
