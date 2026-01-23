@@ -9,7 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Youtube, Wallet, CalendarDays, Car, ShoppingBag, Lightbulb, ArrowLeft } from 'lucide-react';
+import { Youtube, Wallet, CalendarDays, Car, ShoppingBag, Lightbulb, ArrowLeft, Share2, Copy, Check, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { summarizeItineraryAction } from '../actions';
 
 function ItineraryOverviewDisplay({ overview }: { overview: NonNullable<SavedItinerary['overview']> }) {
     return (
@@ -160,10 +164,50 @@ export default function SavedPlanPage() {
     const params = useParams();
     const planId = params.id as string;
     const { user, status: authStatus } = useUser();
+    const { toast } = useToast();
 
     const { data: plan, loading, error } = useDoc<SavedItinerary>(
         user && planId ? `users/${user.uid}/itineraries/${planId}` : ''
     );
+    
+    // State for Share Dialog
+    const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
+    const [shareSummary, setShareSummary] = React.useState('');
+    const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
+    const [hasCopied, setHasCopied] = React.useState(false);
+
+    const handleGenerateSummary = async () => {
+        if (!plan) return;
+        setIsGeneratingSummary(true);
+        setShareSummary('');
+        const result = await summarizeItineraryAction(plan);
+        if (result.error) {
+            toast({ variant: 'destructive', title: 'Error', description: result.error });
+        } else if (result.summary) {
+            setShareSummary(result.summary);
+        }
+        setIsGeneratingSummary(false);
+    }
+    
+    const handleCopyToClipboard = () => {
+        if (!shareSummary) return;
+        navigator.clipboard.writeText(shareSummary);
+        setHasCopied(true);
+        toast({ title: "Copied to clipboard!" });
+        setTimeout(() => setHasCopied(false), 2000);
+    };
+
+    React.useEffect(() => {
+        if (!isShareDialogOpen) {
+            // Reset state when dialog closes
+            setTimeout(() => {
+                setShareSummary('');
+                setIsGeneratingSummary(false);
+                setHasCopied(false);
+            }, 300);
+        }
+    }, [isShareDialogOpen]);
+
 
     if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
         return (
@@ -216,10 +260,51 @@ export default function SavedPlanPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
-            <div className="mb-6">
+            <div className="mb-6 flex justify-between items-center">
                 <Button variant="outline" asChild>
                     <Link href="/plans"><ArrowLeft className="mr-2 h-4 w-4" /> Back to My Plans</Link>
                 </Button>
+                
+                 <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Share2 className="mr-2 h-4 w-4" /> Share
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Share Your Trip Plan</DialogTitle>
+                            <DialogDescription>
+                                Generate a short summary of your trip to share with friends and family.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                            {!shareSummary && !isGeneratingSummary && (
+                                <Button onClick={handleGenerateSummary} className="w-full">
+                                    Generate Shareable Summary
+                                </Button>
+                            )}
+                            {isGeneratingSummary && (
+                                <div className="flex items-center justify-center h-24">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            )}
+                            {shareSummary && (
+                                <div className="space-y-4">
+                                    <Textarea
+                                        readOnly
+                                        value={shareSummary}
+                                        className="h-40 text-base bg-muted"
+                                    />
+                                    <Button onClick={handleCopyToClipboard} className="w-full">
+                                        {hasCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                                        {hasCopied ? 'Copied!' : 'Copy to Clipboard'}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
             
             {plan.overview ? <ItineraryOverviewDisplay overview={plan.overview} /> : <BasicItineraryDisplay plan={plan} />}

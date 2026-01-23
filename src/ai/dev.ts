@@ -11,3 +11,4 @@ import '@/ai/tools/get-location-details-tool.ts';
 import '@/ai/flows/find-attractions-flow.ts';
 import '@/ai/flows/generate-itinerary-flow.ts';
 import '@/ai/flows/generate-itinerary-overview-flow.ts';
+import '@/ai/flows/summarize-itinerary-flow.ts';
