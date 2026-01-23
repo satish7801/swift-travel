@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Briefcase, Home, Settings, User } from 'lucide-react';
+import { Briefcase, Home, Settings } from 'lucide-react';
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 
 export function SidebarNav() {
@@ -11,7 +11,6 @@ export function SidebarNav() {
   const navItems = [
     { href: '/', icon: <Home />, label: 'Search' },
     { href: '/trips', icon: <Briefcase />, label: 'My Trips' },
-    { href: '/profile', icon: <User />, label: 'Profile' },
     { href: '/settings', icon: <Settings />, label: 'Settings' },
   ];
 

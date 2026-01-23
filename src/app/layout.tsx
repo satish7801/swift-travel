@@ -4,6 +4,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
 import { SidebarNav } from '@/components/sidebar-nav';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
+import UserAuth from '@/components/user-auth';
 
 export const metadata: Metadata = {
   title: 'SwiftTravel',
@@ -24,22 +26,24 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <SidebarProvider>
-          <Sidebar>
-            <SidebarHeader>
-              <Logo />
-            </SidebarHeader>
-            <SidebarContent>
-              <SidebarNav />
-            </SidebarContent>
-            <SidebarFooter>
-              {/* Footer content can go here */}
-            </SidebarFooter>
-          </Sidebar>
-          <SidebarInset>
-            {children}
-          </SidebarInset>
-        </SidebarProvider>
+        <FirebaseClientProvider>
+          <SidebarProvider>
+            <Sidebar>
+              <SidebarHeader>
+                <Logo />
+              </SidebarHeader>
+              <SidebarContent>
+                <SidebarNav />
+              </SidebarContent>
+              <SidebarFooter>
+                <UserAuth />
+              </SidebarFooter>
+            </Sidebar>
+            <SidebarInset>
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>
