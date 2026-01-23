@@ -287,7 +287,7 @@ export default function PlannerPage() {
                             <div className="flex flex-wrap justify-center gap-4">
                                 {itineraryOverview.suggestedVideos.map((videoQuery, index) => (
                                     <Button key={index} asChild variant="outline">
-                                        <a href={`https://www.youtube.com/results?search_query=${\'\'\'${encodeURIComponent(videoQuery)}\'\'\'}`} target="_blank" rel="noopener noreferrer">
+                                        <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(videoQuery)}`} target="_blank" rel="noopener noreferrer">
                                             <Youtube className="mr-2 h-4 w-4" />
                                             {videoQuery}
                                         </a>
