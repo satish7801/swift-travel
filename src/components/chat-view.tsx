@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useFormStatus, useActionState } from 'react';
+import Image from 'next/image';
 import { AlertCircle, Bot, Send, User } from 'lucide-react';
 import { askChatbot, type ChatState } from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -142,6 +143,18 @@ export default function ChatView({ results }: { results: Route[] | null }) {
                       {reply}
                     </Button>
                   ))}
+                </div>
+              )}
+
+              {message.role === 'assistant' && message.displayData?.image && (
+                <div className="pl-11 mt-2">
+                  <Image 
+                    src={message.displayData.image} 
+                    alt="Location image"
+                    width={300}
+                    height={200}
+                    className="rounded-lg border shadow-sm"
+                  />
                 </div>
               )}
             </div>

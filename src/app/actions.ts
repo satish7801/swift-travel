@@ -12,6 +12,9 @@ export type ChatState = {
     bookingDetails?: {
         routeId: string;
         confirmationMessage: string;
+    },
+    displayData?: {
+      image?: string;
     }
   }[];
 };
@@ -62,6 +65,7 @@ export async function askChatbot(state: ChatState, formData: FormData): Promise<
           id: Date.now() + 1,
           suggestedReplies: aiResponse.suggestedReplies,
           bookingDetails: aiResponse.bookingDetails,
+          displayData: aiResponse.displayData,
         },
       ],
     };

@@ -24,7 +24,10 @@ const TravelChatbotAssistanceOutputSchema = z.object({
   bookingDetails: z.object({ 
     routeId: z.string().describe("The ID of the route to be saved."),
     confirmationMessage: z.string().describe("A friendly confirmation message for the user, e.g., 'I've saved your trip to Goa to your My Trips page!'")
-  }).optional().describe("Details for saving a trip if the user confirms a booking/saving request.")
+  }).optional().describe("Details for saving a trip if the user confirms a booking/saving request."),
+  displayData: z.object({
+    image: z.string().optional().describe("A data URI for an image to display.")
+  }).optional().describe("Optional structured data to be displayed in the UI along with the text response.")
 });
 export type TravelChatbotAssistanceOutput = z.infer<typeof TravelChatbotAssistanceOutputSchema>;
 
@@ -40,7 +43,7 @@ const prompt = ai.definePrompt({
   prompt: `You are a helpful and friendly travel assistant chatbot. Your primary goals are to help users plan trips, find travel options, and provide information about destinations.
 
 - **Saving Trips**: If the user is viewing routes and asks to book or save one, identify the route 'id' from the context and populate the 'bookingDetails' field in your response. This action saves the trip for the user, it does not perform a real booking.
-- **Destination Info**: If the user asks for things to do, see, or eat in a location (e.g., "tell me about Jaipur", "what's good to eat in Goa?"), use the \`getLocationDetails\` tool to get information. Present this information to the user in a friendly, conversational way.
+- **Destination Info**: If the user asks for things to do, see, or eat in a location (e.g., "tell me about Jaipur", "what's good to eat in Goa?"), use the \`getLocationDetails\` tool to get information. If the tool returns an image data URI in the 'imageDataUri' field, you must pass it through in the 'displayData.image' field of your final JSON response. Present the text information from the tool to the user in a friendly, conversational way.
 - **Route Questions**: If the user asks about the routes they are currently viewing (provided in the context), use that data to answer their questions (e.g., "which is the fastest?", "compare the first two options").
 - **General Conversation**: For any other questions, be a helpful travel assistant.
 - **Suggestions**: Always provide 2-3 relevant follow-up questions in the 'suggestedReplies' field.
