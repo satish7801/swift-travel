@@ -18,6 +18,10 @@ const initialState: ChatState = {
       role: 'assistant',
       content: 'Hello! How can I help you plan your travel today?',
       id: 1,
+      suggestedReplies: [
+        "Plan a trip to Goa",
+        "Find flights from Delhi to Mumbai",
+      ]
     }
   ],
 };
@@ -35,6 +39,7 @@ function SubmitButton() {
 export default function ChatView({ results }: { results: Route[] | null }) {
   const [state, formAction] = useFormState(askChatbot, initialState);
   const formRef = React.useRef<HTMLFormElement>(null);
+  const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -58,46 +63,64 @@ export default function ChatView({ results }: { results: Route[] | null }) {
     }
   }, [state.messages]);
 
+  const handleSuggestionClick = (suggestion: string) => {
+    if (textAreaRef.current && formRef.current) {
+        textAreaRef.current.value = suggestion;
+        formRef.current.requestSubmit();
+    }
+  };
+
 
   return (
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 p-4 -mx-4" ref={scrollAreaRef}>
         <div className="space-y-4">
           {state.messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                'flex items-start gap-3',
-                message.role === 'user' && 'justify-end'
-              )}
-            >
-              {message.role === 'assistant' && (
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback><Bot className="h-5 w-5"/></AvatarFallback>
-                </Avatar>
-              )}
-               {message.role === 'error' && (
-                <Avatar className="h-8 w-8 bg-destructive text-destructive-foreground">
-                  <AvatarFallback><AlertCircle className="h-5 w-5"/></AvatarFallback>
-                </Avatar>
-              )}
-
+            <div key={message.id}>
               <div
                 className={cn(
-                  'max-w-[75%] rounded-lg p-3 text-sm',
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted',
-                  message.role === 'error' && 'bg-destructive text-destructive-foreground'
+                  'flex items-start gap-3',
+                  message.role === 'user' && 'justify-end'
                 )}
               >
-                {message.content}
+                {message.role === 'assistant' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback><Bot className="h-5 w-5"/></AvatarFallback>
+                  </Avatar>
+                )}
+                 {message.role === 'error' && (
+                  <Avatar className="h-8 w-8 bg-destructive text-destructive-foreground">
+                    <AvatarFallback><AlertCircle className="h-5 w-5"/></AvatarFallback>
+                  </Avatar>
+                )}
+
+                <div
+                  className={cn(
+                    'max-w-[75%] rounded-lg p-3 text-sm',
+                    message.role === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted',
+                    message.role === 'error' && 'bg-destructive text-destructive-foreground'
+                  )}
+                >
+                  {message.content}
+                </div>
+
+                {message.role === 'user' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback><User className="h-5 w-5"/></AvatarFallback>
+                  </Avatar>
+                )}
               </div>
 
-              {message.role === 'user' && (
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback><User className="h-5 w-5"/></AvatarFallback>
-                </Avatar>
+              {message.role === 'assistant' && message.suggestedReplies && message.suggestedReplies.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2 pl-11">
+                  {message.suggestedReplies.map((reply, index) => (
+                    <Button key={index} size="sm" variant="outline" onClick={() => handleSuggestionClick(reply)}>
+                      {reply}
+                    </Button>
+                  ))}
+                </div>
               )}
             </div>
           ))}
@@ -114,6 +137,7 @@ export default function ChatView({ results }: { results: Route[] | null }) {
         >
           <input type="hidden" name="searchContext" value={results ? JSON.stringify(results) : ''} />
           <Textarea
+            ref={textAreaRef}
             name="query"
             placeholder="Ask about a destination..."
             className="min-h-0"

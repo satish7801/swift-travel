@@ -8,6 +8,7 @@ export type ChatState = {
     role: 'user' | 'assistant' | 'system' | 'error';
     content: string;
     id: number;
+    suggestedReplies?: string[];
   }[];
 };
 
@@ -42,7 +43,7 @@ export async function askChatbot(state: ChatState, formData: FormData): Promise<
   };
 
   try {
-    const aiResponse = await travelChatbotAssistance({ 
+    const aiResponse = await travelChatbotAssistance({
       query: validatedFields.data.query,
       context: searchContext ?? undefined,
     });
@@ -55,6 +56,7 @@ export async function askChatbot(state: ChatState, formData: FormData): Promise<
           role: 'assistant' as const,
           content: aiResponse.response,
           id: Date.now() + 1,
+          suggestedReplies: aiResponse.suggestedReplies,
         },
       ],
     };
