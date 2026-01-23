@@ -1,13 +1,48 @@
 import type { Route } from '@/lib/types';
 import RouteCard from './route-card';
 import { Skeleton } from './ui/skeleton';
+import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
+import type { SortKey } from '@/app/page';
 
 interface SearchResultsProps {
   results: Route[] | null;
   isLoading: boolean;
+  sortBy: SortKey;
+  onSortChange: (sortBy: SortKey) => void;
 }
 
-export default function SearchResults({ results, isLoading }: SearchResultsProps) {
+const sortOptions: { label: string; value: SortKey }[] = [
+    { label: 'Best', value: 'default' },
+    { label: 'Cheapest', value: 'price' },
+    { label: 'Fastest', value: 'duration' },
+];
+
+function SortControls({ sortBy, onSortChange }: { sortBy: SortKey; onSortChange: (sortBy: SortKey) => void; }) {
+    return (
+        <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Sort by:</span>
+            <div className="flex items-center gap-2 rounded-lg bg-muted p-1">
+                {sortOptions.map(option => (
+                    <Button
+                        key={option.value}
+                        variant={sortBy === option.value ? 'outline' : 'ghost'}
+                        size="sm"
+                        onClick={() => onSortChange(option.value)}
+                        className={cn(
+                            'px-3',
+                            sortBy === option.value && 'bg-background shadow-sm'
+                        )}
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+export default function SearchResults({ results, isLoading, sortBy, onSortChange }: SearchResultsProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -34,7 +69,10 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-headline font-semibold">Available Routes</h2>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h2 className="text-2xl font-headline font-semibold">Available Routes</h2>
+        <SortControls sortBy={sortBy} onSortChange={onSortChange} />
+      </div>
       {results.map(route => (
         <RouteCard key={route.id} route={route} />
       ))}

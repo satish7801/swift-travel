@@ -8,16 +8,21 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import type { Route } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { searchRoutesAction } from './search-actions';
+import { parseDuration } from '@/lib/utils';
+
+export type SortKey = 'default' | 'price' | 'duration';
 
 export default function Home() {
   const [searchResults, setSearchResults] = React.useState<Route[] | null>(null);
   const [isSearching, setIsSearching] = React.useState(false);
+  const [sortBy, setSortBy] = React.useState<SortKey>('default');
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-plane');
   const { toast } = useToast();
 
   const handleSearch = async (filters: SearchFilters) => {
     setIsSearching(true);
     setSearchResults(null);
+    setSortBy('default'); // Reset sort on new search
 
     try {
       const results = await searchRoutesAction(filters);
@@ -34,6 +39,22 @@ export default function Home() {
       setIsSearching(false);
     }
   };
+  
+  const sortedResults = React.useMemo(() => {
+    if (!searchResults) return null;
+    if (sortBy === 'default') return searchResults;
+
+    return [...searchResults].sort((a, b) => {
+      if (sortBy === 'price') {
+        return a.price - b.price;
+      }
+      if (sortBy === 'duration') {
+        return parseDuration(a.totalDuration) - parseDuration(b.totalDuration);
+      }
+      return 0;
+    });
+  }, [searchResults, sortBy]);
+
 
   return (
     <main className="flex-1">
@@ -64,7 +85,12 @@ export default function Home() {
       </div>
       
       <div className="container mx-auto px-4 mt-8 pb-8">
-        <SearchResults results={searchResults} isLoading={isSearching} />
+        <SearchResults
+          results={sortedResults}
+          isLoading={isSearching}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+        />
       </div>
     </main>
   );
