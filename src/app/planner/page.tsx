@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Loader2, MapPin, Sparkles, Wand2, BookOpen, Lightbulb, Youtube } from 'lucide-react';
+import { Loader2, MapPin, Sparkles, Wand2, BookOpen, Lightbulb, Youtube, Wallet, CalendarDays, Car, ShoppingBag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { findAttractionsAction, generateItineraryAction, generateItineraryOverviewAction } from './actions';
 import type { GenerateItineraryOutput as ItineraryData } from '@/ai/flows/generate-itinerary-flow';
@@ -238,23 +238,69 @@ export default function PlannerPage() {
                     <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">{itineraryOverview.introduction}</p>
                 </CardHeader>
                 <CardContent className="p-6 space-y-8">
-                    {itineraryOverview.dailyBreakdown.map(day => (
-                        <div key={day.day}>
-                            <Separator className="my-6" />
-                            <h3 className="text-2xl font-bold font-headline mb-2">Day {day.day}: {day.dayTitle}</h3>
-                            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{day.narrative}</p>
-                            {day.proTip && (
-                                <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                    <Lightbulb className="h-5 w-5 mt-0.5 shrink-0" />
-                                    <div>
-                                        <h4 className="font-semibold">Pro Tip</h4>
-                                        <p className="text-sm">{day.proTip}</p>
-                                    </div>
-                                </div>
-                            )}
+                    {/* Quick Facts Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border rounded-lg p-4">
+                        <div className="flex items-start gap-4">
+                            <Wallet className="h-7 w-7 text-primary mt-1 shrink-0" />
+                            <div>
+                                <h4 className="font-semibold">Estimated Cost</h4>
+                                <p className="text-muted-foreground text-sm">{itineraryOverview.estimatedCost}</p>
+                            </div>
                         </div>
-                    ))}
-                    <Separator className="my-6" />
+                        <div className="flex items-start gap-4">
+                            <CalendarDays className="h-7 w-7 text-primary mt-1 shrink-0" />
+                            <div>
+                                <h4 className="font-semibold">Best Time to Visit</h4>
+                                <p className="text-muted-foreground text-sm">{itineraryOverview.bestTimeToVisit}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Separator />
+                    
+                    {/* Daily Breakdown */}
+                    <h3 className="text-3xl font-bold font-headline text-center">Your Day-by-Day Itinerary</h3>
+                    <div className="space-y-8">
+                      {itineraryOverview.dailyBreakdown.map(day => (
+                          <div key={day.day} className="border-l-2 border-primary pl-6 relative">
+                              <div className="absolute -left-[11px] top-1 h-5 w-5 rounded-full bg-primary border-4 border-background" />
+                              <h4 className="text-2xl font-bold font-headline">Day {day.day}: {day.dayTitle}</h4>
+                              <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed mt-2">{day.narrative}</p>
+                              {day.proTip && (
+                                  <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                      <Lightbulb className="h-5 w-5 mt-0.5 shrink-0" />
+                                      <div>
+                                          <h5 className="font-semibold">Pro Tip</h5>
+                                          <p className="text-sm">{day.proTip}</p>
+                                      </div>
+                                  </div>
+                              )}
+                          </div>
+                      ))}
+                    </div>
+
+                    <Separator />
+
+                    {/* Additional Info Section */}
+                    <h3 className="text-3xl font-bold font-headline text-center">Practical Information</h3>
+                    <div className="grid md:grid-cols-2 gap-8 pt-4">
+                        <div>
+                            <h4 className="text-xl font-bold font-headline mb-3 flex items-center gap-3"><Car className="h-6 w-6 text-primary" /> Getting Around</h4>
+                            <p className="text-muted-foreground leading-relaxed">{itineraryOverview.gettingAround}</p>
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-bold font-headline mb-3 flex items-center gap-3"><ShoppingBag className="h-6 w-6 text-primary" /> What to Pack</h4>
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                {itineraryOverview.whatToPack.map((item, index) => (
+                                    <li key={index}>{item}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    {/* Conclusion & Videos */}
                     <div className="text-center">
                         <h3 className="text-2xl font-bold font-headline mb-2">An Unforgettable Journey</h3>
                         <p className="text-muted-foreground max-w-2xl mx-auto">{itineraryOverview.conclusion}</p>

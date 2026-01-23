@@ -30,6 +30,10 @@ const DailyBreakdownSchema = z.object({
 const GenerateItineraryOverviewOutputSchema = z.object({
   title: z.string().describe("A creative and catchy headline for the entire trip, like a blog post title."),
   introduction: z.string().describe("An engaging introduction that sets the scene and excitement for the trip, written in a personal, first-person-like tone."),
+  estimatedCost: z.string().describe("A rough budget estimation for the trip, excluding travel to the destination (e.g., '₹15,000 - ₹20,000 per person for 3 days')."),
+  bestTimeToVisit: z.string().describe("A short recommendation on the best season or months to visit."),
+  gettingAround: z.string().describe("A paragraph with tips on local transportation options within the city (e.g., auto-rickshaws, metro, ride-sharing apps)."),
+  whatToPack: z.array(z.string()).describe("A list of 5-7 essential items to pack for the trip, specific to the destination and activities."),
   dailyBreakdown: z.array(DailyBreakdownSchema).describe("A day-by-day narrative breakdown of the trip."),
   conclusion: z.string().describe("A concluding paragraph that summarizes the experience and leaves the reader inspired."),
   suggestedVideos: z.array(z.string()).describe("A list of 2-3 YouTube search queries for relevant travel vlogs to get a visual feel for the trip."),
@@ -61,7 +65,13 @@ Based on this, generate a response in the specified JSON format.
 - **Create a Cohesive Story:** The introduction should hook the reader, the daily narratives should flow logically, and the conclusion should provide a satisfying summary.
 - **Suggest Visual Aids:** Include 2-3 specific YouTube search queries that would help the user find relevant travel vlogs. This helps them visualize the experience you're describing.
 
-Transform the user's simple plan into an inspiring story that makes them excited to embark on their journey.
+**In addition to the narrative, you MUST provide the following practical information:**
+- **Estimated Cost:** A realistic budget range for the trip *within the destination*, based on the number of days. Exclude travel to/from the city.
+- **Best Time to Visit:** Recommend the ideal months or season for this trip.
+- **Getting Around:** Give practical advice on local transport options.
+- **What to Pack:** Create a short, essential packing list (5-7 items) relevant to the city and planned activities.
+
+Transform the user's simple plan into an inspiring and practical guide that makes them excited and prepared for their journey.
 `,
 });
 
