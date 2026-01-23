@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Youtube, Wallet, CalendarDays, Car, ShoppingBag, Lightbulb, ArrowLeft, Share2, Copy, Check, Loader2 } from 'lucide-react';
+import { Youtube, Wallet, CalendarDays, Car, ShoppingBag, Lightbulb, ArrowLeft, Share2, Copy, Check, Loader2, Twitter, Mail } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -197,6 +197,22 @@ export default function SavedPlanPage() {
         setTimeout(() => setHasCopied(false), 2000);
     };
 
+    const handleNativeShare = () => {
+        if (navigator.share && plan) {
+            navigator.share({
+                title: `My trip to ${plan.city}`,
+                text: shareSummary,
+            }).catch((error) => console.error('Error sharing', error));
+        } else {
+            // Fallback for desktop browsers or those without share support
+            handleCopyToClipboard();
+            toast({
+                title: "Web Share not supported",
+                description: "Your trip summary has been copied to the clipboard instead.",
+            });
+        }
+    };
+
     React.useEffect(() => {
         if (!isShareDialogOpen) {
             // Reset state when dialog closes
@@ -296,10 +312,30 @@ export default function SavedPlanPage() {
                                         value={shareSummary}
                                         className="h-40 text-base bg-muted"
                                     />
-                                    <Button onClick={handleCopyToClipboard} className="w-full">
-                                        {hasCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                                        {hasCopied ? 'Copied!' : 'Copy to Clipboard'}
-                                    </Button>
+                                    <div className="space-y-3">
+                                        <Button onClick={handleNativeShare} className="w-full" size="lg">
+                                            <Share2 className="mr-2 h-5 w-5" />
+                                            Share with friends
+                                        </Button>
+                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                            <Button onClick={handleCopyToClipboard} variant="outline">
+                                                {hasCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                                                {hasCopied ? 'Copied' : 'Copy'}
+                                            </Button>
+                                            <Button asChild variant="outline">
+                                                <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareSummary)}`} target="_blank" rel="noopener noreferrer">
+                                                    <Twitter className="mr-2 h-4 w-4" />
+                                                    Twitter
+                                                </a>
+                                            </Button>
+                                            <Button asChild variant="outline">
+                                                <a href={`mailto:?subject=${encodeURIComponent(`Check out my trip to ${plan.city}!`)}&body=${encodeURIComponent(shareSummary)}`}>
+                                                    <Mail className="mr-2 h-4 w-4" />
+                                                    Email
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
