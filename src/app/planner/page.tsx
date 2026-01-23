@@ -5,15 +5,17 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Loader2, MapPin, Sparkles, Wand2 } from 'lucide-react';
+import { Loader2, MapPin, Sparkles, Wand2, BookOpen, Lightbulb, Youtube } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { findAttractionsAction, generateItineraryAction } from './actions';
-import type { GenerateItineraryOutput } from '@/ai/flows/generate-itinerary-flow';
+import { findAttractionsAction, generateItineraryAction, generateItineraryOverviewAction } from './actions';
+import type { GenerateItineraryOutput as ItineraryData } from '@/ai/flows/generate-itinerary-flow';
+import type { GenerateItineraryOverviewOutput } from '@/ai/flows/generate-itinerary-overview-flow';
+import { Separator } from '@/components/ui/separator';
 
 const cityFormSchema = z.object({
   city: z.string().min(2, { message: 'Please enter a city name.' }),
@@ -26,10 +28,12 @@ export default function PlannerPage() {
   
   const [attractions, setAttractions] = React.useState<string[]>([]);
   const [selectedAttractions, setSelectedAttractions] = React.useState<Set<string>>(new Set());
-  const [itinerary, setItinerary] = React.useState<GenerateItineraryOutput | null>(null);
-  
+  const [itinerary, setItinerary] = React.useState<ItineraryData | null>(null);
+  const [itineraryOverview, setItineraryOverview] = React.useState<GenerateItineraryOverviewOutput | null>(null);
+
   const [isLoadingAttractions, setIsLoadingAttractions] = React.useState(false);
   const [isGeneratingItinerary, setIsGeneratingItinerary] = React.useState(false);
+  const [isGeneratingOverview, setIsGeneratingOverview] = React.useState(false);
   const [currentCity, setCurrentCity] = React.useState('');
 
   const cityForm = useForm<CityFormValues>({
@@ -42,6 +46,7 @@ export default function PlannerPage() {
     setAttractions([]);
     setSelectedAttractions(new Set());
     setItinerary(null);
+    setItineraryOverview(null);
     setCurrentCity(city);
 
     const result = await findAttractionsAction(city);
@@ -74,6 +79,7 @@ export default function PlannerPage() {
     
     setIsGeneratingItinerary(true);
     setItinerary(null);
+    setItineraryOverview(null);
     
     const result = await generateItineraryAction(currentCity, Array.from(selectedAttractions));
 
@@ -84,6 +90,22 @@ export default function PlannerPage() {
     }
     setIsGeneratingItinerary(false);
   };
+
+  const handleGenerateOverview = async () => {
+    if (!itinerary || !currentCity) return;
+
+    setIsGeneratingOverview(true);
+    setItineraryOverview(null);
+
+    const result = await generateItineraryOverviewAction(currentCity, itinerary);
+
+    if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+    } else if (result.overview) {
+        setItineraryOverview(result.overview);
+    }
+    setIsGeneratingOverview(false);
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -172,25 +194,87 @@ export default function PlannerPage() {
                 <p className="mt-2 text-muted-foreground">Crafting your personalized itinerary...</p>
             </div>
         )}
+        
+        {itinerary && !itineraryOverview && (
+          <Card className="mt-8">
+            <CardHeader>
+                <CardTitle className="text-3xl font-headline text-center">Your {itinerary.totalDays}-Day Trip to {currentCity}</CardTitle>
+                <CardDescription className="text-center">{itinerary.summary}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {itinerary.itinerary.map(dayPlan => (
+                    <div key={dayPlan.day} className="border-l-2 border-primary pl-6 relative">
+                        <div className="absolute -left-[11px] top-0 h-5 w-5 rounded-full bg-primary border-4 border-background" />
+                        <h3 className="text-xl font-bold font-headline">Day {dayPlan.day}: {dayPlan.title}</h3>
+                        <ul className="mt-2 list-disc list-inside space-y-1 text-muted-foreground">
+                            {dayPlan.activities.map((activity, index) => (
+                                <li key={index}>{activity}</li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
+            </CardContent>
+            <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
+                <p className="text-sm text-muted-foreground">Want a more detailed, blog-style view?</p>
+                <Button size="lg" onClick={handleGenerateOverview} disabled={isGeneratingOverview}>
+                    {isGeneratingOverview ? <Loader2 className="animate-spin" /> : <BookOpen />}
+                    <span className="ml-2">Generate Travel Blog</span>
+                </Button>
+            </CardFooter>
+          </Card>
+        )}
 
-        {itinerary && (
+        {isGeneratingOverview && (
+            <div className="text-center py-8 mt-8">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                <p className="mt-2 text-muted-foreground">Writing your travel story...</p>
+            </div>
+        )}
+
+        {itineraryOverview && (
             <Card className="mt-8">
-                <CardHeader>
-                    <CardTitle className="text-3xl font-headline text-center">Your {itinerary.totalDays}-Day Trip to {currentCity}</CardTitle>
-                    <CardDescription className="text-center">{itinerary.summary}</CardDescription>
+                <CardHeader className="text-center p-6">
+                    <h2 className="text-4xl font-bold font-headline text-primary">{itineraryOverview.title}</h2>
+                    <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">{itineraryOverview.introduction}</p>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    {itinerary.itinerary.map(dayPlan => (
-                        <div key={dayPlan.day} className="border-l-2 border-primary pl-6 relative">
-                            <div className="absolute -left-[11px] top-0 h-5 w-5 rounded-full bg-primary border-4 border-background" />
-                            <h3 className="text-xl font-bold font-headline">Day {dayPlan.day}: {dayPlan.title}</h3>
-                            <ul className="mt-2 list-disc list-inside space-y-1 text-muted-foreground">
-                                {dayPlan.activities.map((activity, index) => (
-                                    <li key={index}>{activity}</li>
-                                ))}
-                            </ul>
+                <CardContent className="p-6 space-y-8">
+                    {itineraryOverview.dailyBreakdown.map(day => (
+                        <div key={day.day}>
+                            <Separator className="my-6" />
+                            <h3 className="text-2xl font-bold font-headline mb-2">Day {day.day}: {day.dayTitle}</h3>
+                            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{day.narrative}</p>
+                            {day.proTip && (
+                                <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                    <Lightbulb className="h-5 w-5 mt-0.5 shrink-0" />
+                                    <div>
+                                        <h4 className="font-semibold">Pro Tip</h4>
+                                        <p className="text-sm">{day.proTip}</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))}
+                    <Separator className="my-6" />
+                    <div className="text-center">
+                        <h3 className="text-2xl font-bold font-headline mb-2">An Unforgettable Journey</h3>
+                        <p className="text-muted-foreground max-w-2xl mx-auto">{itineraryOverview.conclusion}</p>
+                    </div>
+                    {itineraryOverview.suggestedVideos && itineraryOverview.suggestedVideos.length > 0 && (
+                        <div className="text-center pt-4">
+                            <h3 className="text-2xl font-bold font-headline mb-4">Visualize Your Trip</h3>
+                            <p className="text-muted-foreground mb-4">Watch travel vlogs to get a feel for your destination:</p>
+                            <div className="flex flex-wrap justify-center gap-4">
+                                {itineraryOverview.suggestedVideos.map((videoQuery, index) => (
+                                    <Button key={index} asChild variant="outline">
+                                        <a href={`https://www.youtube.com/results?search_query=${\'\'\'${encodeURIComponent(videoQuery)}\'\'\'}`} target="_blank" rel="noopener noreferrer">
+                                            <Youtube className="mr-2 h-4 w-4" />
+                                            {videoQuery}
+                                        </a>
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         )}
