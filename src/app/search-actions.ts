@@ -3,8 +3,7 @@
 import { generateRoutes } from '@/ai/flows/generate-routes-flow';
 import { confirmLocationChoice } from '@/ai/flows/confirm-location-choice';
 import { findLocations } from '@/ai/flows/find-locations-flow';
-import type { SearchFilters } from '@/components/search-form';
-import { searchFormSchema } from '@/components/search-form';
+import { searchFormSchema, type SearchFilters } from '@/lib/schemas';
 import type { Route, UserProfile } from '@/lib/types';
 
 /**

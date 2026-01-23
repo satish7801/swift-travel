@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { type UseFormReturn } from "react-hook-form";
-import { z } from "zod";
 import { format } from "date-fns";
 import { ArrowRightLeft, Calendar as CalendarIcon, Loader2, MapPin, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,14 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
-export const searchFormSchema = z.object({
-  from: z.string().min(2, { message: "Please enter a departure location." }),
-  to: z.string().min(2, { message: "Please enter a destination." }),
-  date: z.date().optional(),
-});
-
-export type SearchFilters = z.infer<typeof searchFormSchema>;
+import type { SearchFilters } from '@/lib/schemas';
 
 interface SearchFormProps {
   form: UseFormReturn<SearchFilters>;
