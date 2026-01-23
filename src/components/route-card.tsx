@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowRight, Bus, Leaf, Loader2, MoreVertical, Plane, TrainFront } from 'lucide-react';
+import { ArrowRight, Bus, Leaf, Loader2, MoreHorizontal, MoreVertical, Plane, TrainFront, Trash2 } from 'lucide-react';
 import type { Route, TransportMode } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,24 @@ import { VariantProps } from 'class-variance-authority';
 import { badgeVariants } from './ui/badge';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { saveTrip } from '@/firebase/firestore/trips';
+import { saveTrip, deleteTrip } from '@/firebase/firestore/trips';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 
 const transportIcons: Record<TransportMode, React.ReactNode> = {
   flight: <Plane className="h-5 w-5" />,
@@ -37,11 +54,13 @@ function formatTime(dateString: string) {
   return new Date(dateString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
-export default function RouteCard({ route }: { route: Route }) {
+export default function RouteCard({ route, isSavedTrip }: { route: Route & { id: string }, isSavedTrip?: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isBooking, setIsBooking] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
   const handleBookNow = async () => {
     if (!user) {
@@ -65,7 +84,23 @@ export default function RouteCard({ route }: { route: Route }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!user || !firestore) return;
+    setIsDeleting(true);
+    try {
+      await deleteTrip(firestore, user.uid, route.id);
+      toast({ title: 'Trip Deleted', description: 'The trip has been removed from your list.' });
+      setIsDeleteDialogOpen(false);
+    } catch (error: any) {
+      console.error("Delete failed", error);
+      toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message || 'An unknown error occurred.' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
+    <>
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="p-4 flex-row items-start justify-between">
         <div className="flex items-center gap-4">
@@ -88,9 +123,26 @@ export default function RouteCard({ route }: { route: Route }) {
                 </div>
             </div>
         </div>
-        <div className="text-right">
-            <p className="text-2xl font-bold">₹{route.price.toLocaleString('en-IN')}</p>
-            <Badge variant={getAvailabilityVariant(route.availability)} className="mt-1">{route.availability}</Badge>
+        <div className="flex items-start gap-2">
+            <div className="text-right">
+                <p className="text-2xl font-bold">₹{route.price.toLocaleString('en-IN')}</p>
+                <Badge variant={getAvailabilityVariant(route.availability)} className="mt-1">{route.availability}</Badge>
+            </div>
+            {isSavedTrip && (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Delete</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )}
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
@@ -116,17 +168,38 @@ export default function RouteCard({ route }: { route: Route }) {
         ))}
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0">
-        <Button 
-          className="w-full" 
-          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }} 
-          disabled={!user || route.availability === 'Sold Out' || isBooking}
-          onClick={handleBookNow}
-        >
-          {isBooking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {isBooking ? 'Booking...' : 'Book Now'}
-        </Button>
-      </CardFooter>
+      {!isSavedTrip && (
+        <CardFooter className="p-4 pt-0">
+          <Button 
+            className="w-full" 
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }} 
+            disabled={!user || route.availability === 'Sold Out' || isBooking}
+            onClick={handleBookNow}
+          >
+            {isBooking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isBooking ? 'Booking...' : 'Book Now'}
+          </Button>
+        </CardFooter>
+      )}
     </Card>
+
+    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete this trip from your saved trips.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Delete
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

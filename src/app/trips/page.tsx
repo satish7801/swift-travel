@@ -11,7 +11,6 @@ import type { Route } from '@/lib/types';
 export default function MyTripsPage() {
   const { user, status } = useUser();
 
-  // The collection hook will be updated to support ordering
   const { data: trips, loading, error } = useCollection<Route>(
     user ? `users/${user.uid}/trips` : '',
     { orderBy: ['savedAt', 'desc'] }
@@ -68,7 +67,7 @@ export default function MyTripsPage() {
       {trips && trips.length > 0 ? (
         <div className="space-y-4">
           {trips.map(trip => (
-            <RouteCard key={trip.id} route={trip} />
+            <RouteCard key={trip.id} route={trip} isSavedTrip />
           ))}
         </div>
       ) : (
