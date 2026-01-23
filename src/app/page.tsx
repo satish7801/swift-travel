@@ -6,29 +6,33 @@ import SearchForm, { SearchFilters } from '@/components/search-form';
 import SearchResults from '@/components/search-results';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import type { Route } from '@/lib/types';
-import { mockRoutes } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
+import { searchRoutesAction } from './search-actions';
 
 export default function Home() {
   const [searchResults, setSearchResults] = React.useState<Route[] | null>(null);
   const [isSearching, setIsSearching] = React.useState(false);
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-plane');
+  const { toast } = useToast();
 
-  const handleSearch = (filters: SearchFilters) => {
+  const handleSearch = async (filters: SearchFilters) => {
     setIsSearching(true);
     setSearchResults(null);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const results = mockRoutes.filter(route => {
-        const fromMatch = filters.from ? route.legs[0].departureLocation.toLowerCase().includes(filters.from.toLowerCase()) : true;
-        const toMatch = filters.to ? route.legs[route.legs.length - 1].arrivalLocation.toLowerCase().includes(filters.to.toLowerCase()) : true;
-        // Basic date matching, in a real app this would be more complex
-        const dateMatch = filters.date ? route.legs[0].departureTime.startsWith(filters.date.toISOString().split('T')[0]) : true;
-        return fromMatch && toMatch && dateMatch;
-      });
+    try {
+      const results = await searchRoutesAction(filters);
       setSearchResults(results);
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Search Failed",
+        description: error.message || "Could not fetch routes.",
+      });
+      setSearchResults([]); // show 'No results' message
+    } finally {
       setIsSearching(false);
-    }, 1000);
+    }
   };
 
   return (
