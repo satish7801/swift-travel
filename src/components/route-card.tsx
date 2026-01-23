@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Separator } from './ui/separator';
-import { cn } from '@/lib/utils';
+import { VariantProps } from 'class-variance-authority';
+import { badgeVariants } from './ui/badge';
 
 const transportIcons: Record<TransportMode, React.ReactNode> = {
   flight: <Plane className="h-5 w-5" />,
@@ -12,11 +13,18 @@ const transportIcons: Record<TransportMode, React.ReactNode> = {
   bus: <Bus className="h-5 w-5" />,
 };
 
-const availabilityColors: Record<Route['availability'], string> = {
-    'Available': 'bg-green-100 text-green-800 border-green-200',
-    'Filling Fast': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'Few Seats Left': 'bg-orange-100 text-orange-800 border-orange-200',
-    'Sold Out': 'bg-red-100 text-red-800 border-red-200',
+const getAvailabilityVariant = (availability: Route['availability']): VariantProps<typeof badgeVariants>['variant'] => {
+    switch (availability) {
+        case 'Available':
+            return 'success';
+        case 'Filling Fast':
+        case 'Few Seats Left':
+            return 'warning';
+        case 'Sold Out':
+            return 'destructive';
+        default:
+            return 'secondary';
+    }
 }
 
 function formatTime(dateString: string) {
@@ -43,7 +51,7 @@ export default function RouteCard({ route }: { route: Route }) {
         </div>
         <div className="text-right">
             <p className="text-2xl font-bold">₹{route.price.toLocaleString('en-IN')}</p>
-            <Badge className={cn("mt-1", availabilityColors[route.availability])}>{route.availability}</Badge>
+            <Badge variant={getAvailabilityVariant(route.availability)} className="mt-1">{route.availability}</Badge>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
