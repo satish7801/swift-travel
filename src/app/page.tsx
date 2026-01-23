@@ -9,6 +9,7 @@ import type { Route } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { searchRoutesAction } from './search-actions';
 import { parseDuration } from '@/lib/utils';
+import ChatWidget from '@/components/chat-widget';
 
 export type SortKey = 'default' | 'price' | 'duration' | 'transfers';
 
@@ -95,6 +96,7 @@ export default function Home() {
           onSortChange={setSortBy}
         />
       </div>
+      <ChatWidget results={sortedResults} />
     </main>
   );
 }

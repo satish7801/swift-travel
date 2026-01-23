@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import type { Route } from '@/lib/types';
 
 const initialState: ChatState = {
   messages: [
@@ -31,7 +32,7 @@ function SubmitButton() {
   );
 }
 
-export default function ChatView() {
+export default function ChatView({ results }: { results: Route[] | null }) {
   const [state, formAction] = useFormState(askChatbot, initialState);
   const formRef = React.useRef<HTMLFormElement>(null);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
@@ -111,6 +112,7 @@ export default function ChatView() {
           }}
           className="flex items-center gap-2"
         >
+          <input type="hidden" name="searchContext" value={results ? JSON.stringify(results) : ''} />
           <Textarea
             name="query"
             placeholder="Ask about a destination..."

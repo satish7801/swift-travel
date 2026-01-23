@@ -13,6 +13,7 @@ import {z} from 'genkit';
 
 const TravelChatbotAssistanceInputSchema = z.object({
   query: z.string().describe('The user query related to travel planning, booking, or support.'),
+  context: z.string().optional().describe('A JSON string representing the current travel routes the user is viewing.'),
 });
 export type TravelChatbotAssistanceInput = z.infer<typeof TravelChatbotAssistanceInputSchema>;
 
@@ -32,8 +33,15 @@ const prompt = ai.definePrompt({
   prompt: `You are a travel assistant chatbot that helps users with planning, booking, and support.
   Your goal is to provide helpful and informative responses to the user's query.
 
+  {{#if context}}
+  The user is currently viewing a list of travel routes. If their query seems to be about these routes, use the following JSON data to form your answer. For example, if they ask "which is the cheapest?", you should find the route with the lowest price from the JSON. If the query is unrelated to the routes, you can ignore this context.
+
+  Route context:
+  {{{context}}}
+  {{/if}}
+
   User Query: {{{query}}}
-  `, // removed example to follow the instructions
+  `, 
 });
 
 const travelChatbotAssistanceFlow = ai.defineFlow(

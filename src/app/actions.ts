@@ -18,6 +18,7 @@ const QuerySchema = z.object({
 export async function askChatbot(state: ChatState, formData: FormData): Promise<ChatState> {
   const rawQuery = formData.get('query');
   const validatedFields = QuerySchema.safeParse({ query: rawQuery });
+  const searchContext = formData.get('searchContext') as (string | null);
 
   const currentMessages = state.messages || [];
 
@@ -41,7 +42,10 @@ export async function askChatbot(state: ChatState, formData: FormData): Promise<
   };
 
   try {
-    const aiResponse = await travelChatbotAssistance({ query: validatedFields.data.query });
+    const aiResponse = await travelChatbotAssistance({ 
+      query: validatedFields.data.query,
+      context: searchContext ?? undefined,
+    });
     
     return {
       messages: [

@@ -3,7 +3,6 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import ChatWidget from '@/components/chat-widget';
 import { SidebarNav } from '@/components/sidebar-nav';
 
 export const metadata: Metadata = {
@@ -41,7 +40,6 @@ export default function RootLayout({
             {children}
           </SidebarInset>
         </SidebarProvider>
-        <ChatWidget />
         <Toaster />
       </body>
     </html>

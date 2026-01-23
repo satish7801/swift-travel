@@ -4,8 +4,9 @@ import { MessageSquarePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import ChatView from './chat-view';
+import type { Route } from '@/lib/types';
 
-export default function ChatWidget() {
+export default function ChatWidget({ results }: { results: Route[] | null }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -25,7 +26,7 @@ export default function ChatWidget() {
             Ask me anything about destinations, routes, or bookings!
           </SheetDescription>
         </SheetHeader>
-        <ChatView />
+        <ChatView results={results} />
       </SheetContent>
     </Sheet>
   );
