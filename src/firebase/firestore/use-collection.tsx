@@ -20,14 +20,13 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
-  DocumentReference,
 } from 'firebase/firestore';
 import { useFirestore } from '../provider';
 
 interface UseCollectionOptions {
-  // Add any options you need for querying, e.g.,
+  orderBy?: [string, 'asc' | 'desc'];
+  // Future options can be added here, e.g.,
   // where?: [string, any, any][];
-  // orderBy?: [string, 'asc' | 'desc'];
   // limit?: number;
 }
 
@@ -36,35 +35,42 @@ export function useCollection<T>(
   options?: UseCollectionOptions
 ) {
   const firestore = useFirestore();
-  const [data, setData] = useState<T[] | null>(null);
+  const [data, setData] = useState<(T & { id: string })[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    if (!firestore) return;
+    if (!firestore || !path) {
+      setLoading(false);
+      return;
+    }
 
     const collectionRef = collection(firestore, path) as CollectionReference<T>;
 
-    // Here you could build a more complex query based on options
-    const q = query(collectionRef);
+    let q: Query<T> = query(collectionRef);
+
+    if (options?.orderBy) {
+      q = query(q, orderBy(options.orderBy[0], options.orderBy[1]));
+    }
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const docs = snapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as unknown as T)
+          (doc) => ({ id: doc.id, ...doc.data() } as (T & { id: string }))
         );
         setData(docs);
         setLoading(false);
       },
       (err: FirestoreError) => {
+        console.error(err);
         setError(err);
         setLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [firestore, path]); // Add options to dependency array if it's not stable
+  }, [firestore, path, options?.orderBy?.[0], options?.orderBy?.[1]]); // Make sure to include orderBy params in dependency array
 
   return { data, loading, error };
 }

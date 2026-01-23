@@ -20,6 +20,41 @@
           "description": "URL of the user's profile picture."
         }
       }
+    },
+    "Trip": {
+      "title": "Trip",
+      "description": "Represents a saved travel route for a user.",
+      "type": "object",
+      "properties": {
+        "legs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "mode": { "type": "string", "enum": ["bus", "train", "flight"] },
+              "departureLocation": { "type": "string" },
+              "arrivalLocation": { "type": "string" },
+              "departureTime": { "type": "string", "format": "date-time" },
+              "arrivalTime": { "type": "string", "format": "date-time" },
+              "duration": { "type": "string" },
+              "operator": { "type": "string" },
+              "details": { "type": "string" }
+            },
+            "required": ["id", "mode", "departureLocation", "arrivalLocation", "departureTime", "arrivalTime", "duration", "operator", "details"]
+          }
+        },
+        "totalDuration": { "type": "string" },
+        "price": { "type": "number" },
+        "availability": { "type": "string", "enum": ["Available", "Filling Fast", "Few Seats Left", "Sold Out"] },
+        "carbonFootprint": { "type": "number" },
+        "savedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the trip was saved."
+        }
+      },
+      "required": ["legs", "totalDuration", "price", "availability", "carbonFootprint", "savedAt"]
     }
   },
   "auth": {
@@ -31,6 +66,12 @@
         "$ref": "#/entities/UserProfile"
       },
       "description": "Stores public profile information for each user."
+    },
+    "/users/{userId}/trips/{tripId}": {
+      "schema": {
+        "$ref": "#/entities/Trip"
+      },
+      "description": "Stores the travel routes saved by a user."
     }
   }
 }

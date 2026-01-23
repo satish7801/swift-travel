@@ -1,4 +1,7 @@
-import { ArrowRight, Bus, Leaf, MoreVertical, Plane, TrainFront } from 'lucide-react';
+'use client';
+
+import * as React from 'react';
+import { ArrowRight, Bus, Leaf, Loader2, MoreVertical, Plane, TrainFront } from 'lucide-react';
 import type { Route, TransportMode } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,6 +9,9 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Separator } from './ui/separator';
 import { VariantProps } from 'class-variance-authority';
 import { badgeVariants } from './ui/badge';
+import { useUser, useFirestore } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { saveTrip } from '@/firebase/firestore/trips';
 
 const transportIcons: Record<TransportMode, React.ReactNode> = {
   flight: <Plane className="h-5 w-5" />,
@@ -32,6 +38,33 @@ function formatTime(dateString: string) {
 }
 
 export default function RouteCard({ route }: { route: Route }) {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isBooking, setIsBooking] = React.useState(false);
+
+  const handleBookNow = async () => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Please log in to book a trip.' });
+      return;
+    }
+    if (!firestore) {
+      toast({ variant: 'destructive', title: 'Could not connect to the database.' });
+      return;
+    }
+
+    setIsBooking(true);
+    try {
+      await saveTrip(firestore, user.uid, route);
+      toast({ title: 'Trip Booked!', description: 'Your trip has been saved to "My Trips".' });
+    } catch (error: any) {
+      console.error("Booking failed", error);
+      toast({ variant: 'destructive', title: 'Booking Failed', description: error.message || 'An unknown error occurred.' });
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="p-4 flex-row items-start justify-between">
@@ -84,7 +117,15 @@ export default function RouteCard({ route }: { route: Route }) {
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button className="w-full" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }} disabled={route.availability === 'Sold Out'}>Book Now</Button>
+        <Button 
+          className="w-full" 
+          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }} 
+          disabled={!user || route.availability === 'Sold Out' || isBooking}
+          onClick={handleBookNow}
+        >
+          {isBooking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {isBooking ? 'Booking...' : 'Book Now'}
+        </Button>
       </CardFooter>
     </Card>
   );

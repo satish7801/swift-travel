@@ -23,7 +23,7 @@ export function SidebarNav() {
             isActive={pathname === item.href}
             // In a real app, you'd navigate. For this demo, we prevent navigation for non-root paths.
             onClick={(e) => {
-                if (item.href !== '/') {
+                if (item.href !== '/' && item.href !== '/trips') {
                     e.preventDefault();
                 }
             }}
