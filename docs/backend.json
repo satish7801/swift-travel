@@ -18,6 +18,22 @@
           "type": "string",
           "format": "uri",
           "description": "URL of the user's profile picture."
+        },
+        "travelPreferences": {
+          "type": "object",
+          "description": "User's travel preferences for personalized recommendations.",
+          "properties": {
+            "preferredMode": {
+              "type": "string",
+              "enum": ["flight", "train", "bus", "any"],
+              "description": "The user's preferred mode of transport."
+            },
+            "budgetLevel": {
+              "type": "string",
+              "enum": ["budget", "mid-range", "luxury", "any"],
+              "description": "The user's general budget preference."
+            }
+          }
         }
       }
     },

@@ -25,4 +25,8 @@ export interface UserProfile {
   displayName: string;
   email: string;
   photoURL: string;
+  travelPreferences?: {
+    preferredMode?: 'flight' | 'train' | 'bus' | 'any';
+    budgetLevel?: 'budget' | 'mid-range' | 'luxury' | 'any';
+  };
 }
