@@ -61,23 +61,23 @@ export default function ChatView({ results }: { results: Route[] | null }) {
         const { routeId, confirmationMessage } = lastMessage.bookingDetails;
 
         if (!user || !firestore) {
-            toast({ variant: 'destructive', title: 'Please log in to book a trip.' });
+            toast({ variant: 'destructive', title: 'Please log in to save a trip.' });
             return;
         }
 
-        const routeToBook = results?.find(r => r.id === routeId);
+        const routeToSave = results?.find(r => r.id === routeId);
 
-        if (routeToBook) {
-            saveTrip(firestore, user.uid, routeToBook)
+        if (routeToSave) {
+            saveTrip(firestore, user.uid, routeToSave)
                 .then(() => {
-                    toast({ title: 'Trip Booked!', description: confirmationMessage });
+                    toast({ title: 'Trip Saved!', description: confirmationMessage });
                 })
                 .catch((error: any) => {
-                    console.error("Booking via chat failed", error);
-                    toast({ variant: 'destructive', title: 'Booking Failed', description: error.message || 'An unknown error occurred.' });
+                    console.error("Saving trip via chat failed", error);
+                    toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
                 });
         } else {
-            toast({ variant: 'destructive', title: 'Booking Failed', description: 'Could not find the selected route to book.' });
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not find the selected route to save.' });
         }
     }
   }, [state.messages, toast, user, firestore, results]);

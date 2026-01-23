@@ -22,9 +22,9 @@ const TravelChatbotAssistanceOutputSchema = z.object({
   response: z.string().describe('The chatbot response to the user query.'),
   suggestedReplies: z.array(z.string()).optional().describe('A list of 2-3 short, relevant follow-up questions the user might ask.'),
   bookingDetails: z.object({ 
-    routeId: z.string().describe("The ID of the route to be booked."),
-    confirmationMessage: z.string().describe("A friendly confirmation message for the user, e.g., 'Your trip to Goa has been booked!'")
-  }).optional().describe("Details for booking a trip if the user confirms.")
+    routeId: z.string().describe("The ID of the route to be saved."),
+    confirmationMessage: z.string().describe("A friendly confirmation message for the user, e.g., 'I've saved your trip to Goa to your My Trips page!'")
+  }).optional().describe("Details for saving a trip if the user confirms a booking/saving request.")
 });
 export type TravelChatbotAssistanceOutput = z.infer<typeof TravelChatbotAssistanceOutputSchema>;
 
@@ -39,7 +39,7 @@ const prompt = ai.definePrompt({
   tools: [getLocationDetails],
   prompt: `You are a helpful and friendly travel assistant chatbot. Your primary goals are to help users plan trips, find travel options, and provide information about destinations.
 
-- **Booking**: If the user is viewing routes and asks to book one, identify the route 'id' from the context and populate the 'bookingDetails' field in your response.
+- **Saving Trips**: If the user is viewing routes and asks to book or save one, identify the route 'id' from the context and populate the 'bookingDetails' field in your response. This action saves the trip for the user, it does not perform a real booking.
 - **Destination Info**: If the user asks for things to do, see, or eat in a location (e.g., "tell me about Jaipur", "what's good to eat in Goa?"), use the \`getLocationDetails\` tool to get information. Present this information to the user in a friendly, conversational way.
 - **Route Questions**: If the user asks about the routes they are currently viewing (provided in the context), use that data to answer their questions (e.g., "which is the fastest?", "compare the first two options").
 - **General Conversation**: For any other questions, be a helpful travel assistant.

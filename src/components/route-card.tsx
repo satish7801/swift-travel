@@ -59,13 +59,13 @@ export default function RouteCard({ route, isSavedTrip, onGenerateVideo }: { rou
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [isBooking, setIsBooking] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
-  const handleBookNow = async () => {
+  const handleSaveTrip = async () => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Please log in to book a trip.' });
+      toast({ variant: 'destructive', title: 'Please log in to save a trip.' });
       return;
     }
     if (!firestore) {
@@ -73,15 +73,15 @@ export default function RouteCard({ route, isSavedTrip, onGenerateVideo }: { rou
       return;
     }
 
-    setIsBooking(true);
+    setIsSaving(true);
     try {
       await saveTrip(firestore, user.uid, route);
-      toast({ title: 'Trip Booked!', description: 'Your trip has been saved to "My Trips".' });
+      toast({ title: 'Trip Saved!', description: 'This trip has been added to "My Trips".' });
     } catch (error: any) {
-      console.error("Booking failed", error);
-      toast({ variant: 'destructive', title: 'Booking Failed', description: error.message || 'An unknown error occurred.' });
+      console.error("Saving trip failed", error);
+      toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
     } finally {
-      setIsBooking(false);
+      setIsSaving(false);
     }
   };
 
@@ -179,11 +179,11 @@ export default function RouteCard({ route, isSavedTrip, onGenerateVideo }: { rou
           <Button 
             className="w-full" 
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }} 
-            disabled={!user || route.availability === 'Sold Out' || isBooking}
-            onClick={handleBookNow}
+            disabled={!user || route.availability === 'Sold Out' || isSaving}
+            onClick={handleSaveTrip}
           >
-            {isBooking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isBooking ? 'Booking...' : 'Book Now'}
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isSaving ? 'Saving...' : 'Save Trip'}
           </Button>
         </CardFooter>
       )}
