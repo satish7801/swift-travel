@@ -34,24 +34,22 @@ export async function generateItineraryAction(city: string, attractions: string[
     }
 
     try {
-        const result = await generateItinerary(validatedInput.data);
-        return { itinerary: result };
+        // Step 1: Generate the basic itinerary
+        const basicItinerary = await generateItinerary(validatedInput.data);
+        if (!basicItinerary) {
+            throw new Error('Failed to generate the initial itinerary plan.');
+        }
+
+        // Step 2: Immediately generate the rich overview
+        const overview = await generateItineraryOverview({ city, itinerary: basicItinerary });
+        if (!overview) {
+            throw new Error('Failed to generate the detailed itinerary overview.');
+        }
+
+        return { itinerary: basicItinerary, overview };
+
     } catch (error: any) {
         console.error('Generate itinerary error:', error);
         return { error: error.message || 'Failed to generate itinerary.' };
-    }
-}
-
-export async function generateItineraryOverviewAction(city: string, itinerary: GenerateItineraryOutput) {
-    if (!city || !itinerary) {
-        return { error: "Missing city or itinerary data." };
-    }
-
-    try {
-        const result = await generateItineraryOverview({ city, itinerary });
-        return { overview: result };
-    } catch (error: any) {
-        console.error('Generate itinerary overview error:', error);
-        return { error: error.message || 'Failed to generate itinerary overview.' };
     }
 }

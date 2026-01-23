@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Loader2, MapPin, Sparkles, Wand2, BookOpen, Lightbulb, Youtube, Wallet, CalendarDays, Car, ShoppingBag, Save, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { findAttractionsAction, generateItineraryAction, generateItineraryOverviewAction } from './actions';
+import { findAttractionsAction, generateItineraryAction } from './actions';
 import type { GenerateItineraryOutput as ItineraryData } from '@/ai/flows/generate-itinerary-flow';
 import type { GenerateItineraryOverviewOutput } from '@/ai/flows/generate-itinerary-overview-flow';
 import { Separator } from '@/components/ui/separator';
@@ -41,7 +41,6 @@ export default function PlannerPage() {
 
   const [isLoadingAttractions, setIsLoadingAttractions] = React.useState(false);
   const [isGeneratingItinerary, setIsGeneratingItinerary] = React.useState(false);
-  const [isGeneratingOverview, setIsGeneratingOverview] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [currentCity, setCurrentCity] = React.useState('');
 
@@ -98,29 +97,12 @@ export default function PlannerPage() {
 
     if (result.error) {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
-    } else if (result.itinerary) {
+    } else if (result.itinerary && result.overview) {
         setItinerary(result.itinerary);
+        setItineraryOverview(result.overview);
     }
     setIsGeneratingItinerary(false);
   };
-
-  const handleGenerateOverview = async () => {
-    if (!itinerary || !currentCity) return;
-
-    setIsGeneratingOverview(true);
-    setItineraryOverview(null);
-    setSavedPlanId(null);
-    setPlanJustSaved(false);
-
-    const result = await generateItineraryOverviewAction(currentCity, itinerary);
-
-    if (result.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-    } else if (result.overview) {
-        setItineraryOverview(result.overview);
-    }
-    setIsGeneratingOverview(false);
-  }
   
   const handleSavePlan = () => {
     if (!user || !firestore || !itinerary || !currentCity) {
@@ -210,7 +192,7 @@ export default function PlannerPage() {
               <div className="mt-6 text-center">
                   <Button size="lg" onClick={handleGenerateItinerary} disabled={isGeneratingItinerary || selectedAttractions.size === 0}>
                       {isGeneratingItinerary ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                      <span className="ml-2">Generate My Itinerary</span>
+                      <span className="ml-2">Generate My Travel Guide</span>
                   </Button>
               </div>
             </CardContent>
@@ -220,60 +202,10 @@ export default function PlannerPage() {
         {isGeneratingItinerary && (
             <div className="text-center py-8 mt-8">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                <p className="mt-2 text-muted-foreground">Crafting your personalized itinerary...</p>
+                <p className="mt-2 text-muted-foreground">Crafting your travel guide...</p>
             </div>
         )}
         
-        {itinerary && !itineraryOverview && (
-          <Card className="mt-8">
-            <CardHeader>
-                <CardTitle className="text-3xl font-headline text-center">Your {itinerary.totalDays}-Day Trip to {currentCity}</CardTitle>
-                <CardDescription className="text-center">{itinerary.summary}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                {itinerary.itinerary.map(dayPlan => (
-                    <div key={dayPlan.day} className="border-l-2 border-primary pl-6 relative">
-                        <div className="absolute -left-[11px] top-0 h-5 w-5 rounded-full bg-primary border-4 border-background" />
-                        <h3 className="text-xl font-bold font-headline">Day {dayPlan.day}: {dayPlan.title}</h3>
-                        <ul className="mt-2 list-disc list-inside space-y-1 text-muted-foreground">
-                            {dayPlan.activities.map((activity, index) => (
-                                <li key={index}>{activity}</li>
-                            ))}
-                        </ul>
-                    </div>
-                ))}
-            </CardContent>
-            <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
-                <div className="flex gap-4">
-                  {savedPlanId || planJustSaved ? (
-                    <Button size="lg" variant="outline" asChild>
-                      <Link href="/plans">
-                        <CheckCircle />
-                        <span className="ml-2">View Saved Plans</span>
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button size="lg" onClick={handleSavePlan} disabled={!user || isSaving}>
-                      {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-                      <span className="ml-2">Save Plan</span>
-                    </Button>
-                  )}
-                  <Button size="lg" onClick={handleGenerateOverview} disabled={isGeneratingOverview}>
-                      {isGeneratingOverview ? <Loader2 className="animate-spin" /> : <BookOpen />}
-                      <span className="ml-2">Generate Travel Blog</span>
-                  </Button>
-                </div>
-            </CardFooter>
-          </Card>
-        )}
-
-        {isGeneratingOverview && (
-            <div className="text-center py-8 mt-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                <p className="mt-2 text-muted-foreground">Writing your travel story...</p>
-            </div>
-        )}
-
         {itineraryOverview && (
             <Card className="mt-8">
                 <CardHeader className="text-center p-6">
