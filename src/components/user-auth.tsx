@@ -1,5 +1,7 @@
 'use client';
 
+import * as React from 'react';
+import Link from 'next/link';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -7,7 +9,8 @@ import {
 } from 'firebase/auth';
 import { LogIn, LogOut, User } from 'lucide-react';
 
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
+import { upsertUserProfile } from '@/firebase/firestore/users';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,10 +23,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from './ui/skeleton';
 import { SidebarMenuButton } from './ui/sidebar';
+import { useToast } from '@/hooks/use-toast';
 
 export default function UserAuth() {
   const { user, status } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (status === 'authenticated' && user && firestore) {
+      upsertUserProfile(firestore, user).catch(err => {
+        console.error("Failed to sync user profile:", err);
+      });
+    }
+  }, [status, user, firestore]);
 
   const handleLogin = async () => {
     if (!auth) return;
@@ -32,6 +46,11 @@ export default function UserAuth() {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("Authentication failed", error);
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Could not sign in with Google. Please try again."
+      })
     }
   };
 
@@ -80,6 +99,13 @@ export default function UserAuth() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56" side="top">
             <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/profile">
+                <User className="mr-2 h-4 w-4" />
+                <span>My Profile</span>
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
             <LogOut className="mr-2 h-4 w-4" />

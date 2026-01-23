@@ -20,3 +20,9 @@ export interface Route {
   availability: 'Available' | 'Filling Fast' | 'Few Seats Left' | 'Sold Out';
   carbonFootprint: number;
 }
+
+export interface UserProfile {
+  displayName: string;
+  email: string;
+  photoURL: string;
+}

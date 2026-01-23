@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Briefcase, Home, Settings } from 'lucide-react';
+import { Briefcase, Home, Settings, User } from 'lucide-react';
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 
 export function SidebarNav() {
@@ -11,6 +11,7 @@ export function SidebarNav() {
   const navItems = [
     { href: '/', icon: <Home />, label: 'Search' },
     { href: '/trips', icon: <Briefcase />, label: 'My Trips' },
+    { href: '/profile', icon: <User />, label: 'My Profile' },
     { href: '/settings', icon: <Settings />, label: 'Settings' },
   ];
 
@@ -23,7 +24,8 @@ export function SidebarNav() {
             isActive={pathname === item.href}
             // In a real app, you'd navigate. For this demo, we prevent navigation for non-root paths.
             onClick={(e) => {
-                if (item.href !== '/' && item.href !== '/trips' && item.href !== '/settings') {
+                const allowedPaths = ['/', '/trips', '/settings', '/profile'];
+                if (!allowedPaths.includes(item.href)) {
                     e.preventDefault();
                 }
             }}
