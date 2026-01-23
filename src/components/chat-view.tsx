@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
 import { AlertCircle, Bot, Send, User } from 'lucide-react';
 import { askChatbot, type ChatState } from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,7 +38,7 @@ function SubmitButton() {
 }
 
 export default function ChatView({ results }: { results: Route[] | null }) {
-  const [state, formAction] = useFormState(askChatbot, initialState);
+  const [state, formAction] = useActionState(askChatbot, initialState);
   const formRef = React.useRef<HTMLFormElement>(null);
   const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
