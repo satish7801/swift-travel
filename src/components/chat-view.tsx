@@ -68,14 +68,8 @@ export default function ChatView({ results }: { results: Route[] | null }) {
         const routeToSave = results?.find(r => r.id === routeId);
 
         if (routeToSave) {
-            saveTrip(firestore, user.uid, routeToSave)
-                .then(() => {
-                    toast({ title: 'Trip Saved!', description: confirmationMessage });
-                })
-                .catch((error: any) => {
-                    console.error("Saving trip via chat failed", error);
-                    toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
-                });
+            saveTrip(firestore, user.uid, routeToSave);
+            toast({ title: 'Trip Saved!', description: confirmationMessage });
         } else {
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not find the selected route to save.' });
         }

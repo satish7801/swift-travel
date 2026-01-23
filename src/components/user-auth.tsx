@@ -33,9 +33,8 @@ export default function UserAuth() {
 
   React.useEffect(() => {
     if (status === 'authenticated' && user && firestore) {
-      upsertUserProfile(firestore, user).catch(err => {
-        console.error("Failed to sync user profile:", err);
-      });
+      // This now uses the non-blocking .catch() pattern
+      upsertUserProfile(firestore, user);
     }
   }, [status, user, firestore]);
 

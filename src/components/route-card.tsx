@@ -63,7 +63,7 @@ export default function RouteCard({ route, isSavedTrip, onGenerateVideo }: { rou
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
-  const handleSaveTrip = async () => {
+  const handleSaveTrip = () => {
     if (!user) {
       toast({ variant: 'destructive', title: 'Please log in to save a trip.' });
       return;
@@ -74,30 +74,23 @@ export default function RouteCard({ route, isSavedTrip, onGenerateVideo }: { rou
     }
 
     setIsSaving(true);
-    try {
-      await saveTrip(firestore, user.uid, route);
-      toast({ title: 'Trip Saved!', description: 'This trip has been added to "My Trips".' });
-    } catch (error: any) {
-      console.error("Saving trip failed", error);
-      toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
-    } finally {
-      setIsSaving(false);
-    }
+    saveTrip(firestore, user.uid, route);
+    toast({ title: 'Trip Saved!', description: 'This trip has been added to "My Trips".' });
+    // We can optimistically finish saving, as the UI doesn't depend on the result.
+    setIsSaving(false);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!user || !firestore) return;
     setIsDeleting(true);
-    try {
-      await deleteTrip(firestore, user.uid, route.id);
-      toast({ title: 'Trip Deleted', description: 'The trip has been removed from your list.' });
-      setIsDeleteDialogOpen(false);
-    } catch (error: any) {
-      console.error("Delete failed", error);
-      toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message || 'An unknown error occurred.' });
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteTrip(firestore, user.uid, route.id);
+    toast({ title: 'Trip Deleted', description: 'The trip has been removed from your list.' });
+    // The component will unmount on successful deletion from the parent's state update.
+    // We'll close the dialog as a fallback.
+    setTimeout(() => {
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+    }, 3000);
   };
 
   return (

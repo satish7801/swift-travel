@@ -3,6 +3,8 @@
 import { doc, setDoc, updateDoc, Firestore, getDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import type { UserProfile } from '@/lib/types';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError } from '../errors';
 
 /**
  * Creates or updates a user's profile document in Firestore.
@@ -11,25 +13,42 @@ import type { UserProfile } from '@/lib/types';
  * @param db The Firestore database instance.
  * @param user The Firebase Auth user object.
  */
-export async function upsertUserProfile(db: Firestore, user: User): Promise<void> {
+export function upsertUserProfile(db: Firestore, user: User): void {
   const userRef = doc(db, 'users', user.uid);
 
-  const profileData: Partial<UserProfile> = {
-    displayName: user.displayName || 'Anonymous User',
-    email: user.email || '',
-    photoURL: user.photoURL || '',
-  };
-
-  // Check if we need to initialize preferences for a new user or existing user without them
-  const docSnap = await getDoc(userRef);
-  if (!docSnap.exists() || !docSnap.data().travelPreferences) {
-    profileData.travelPreferences = {
-      preferredMode: 'any',
-      budgetLevel: 'any'
+  // This function is both create and update. We use getDoc to see if it exists.
+  getDoc(userRef).then(docSnap => {
+    const profileData: Partial<UserProfile> = {
+        displayName: user.displayName || 'Anonymous User',
+        email: user.email || '',
+        photoURL: user.photoURL || '',
     };
-  }
+    
+    const isNewUser = !docSnap.exists();
+    if (isNewUser || !docSnap.data().travelPreferences) {
+        profileData.travelPreferences = {
+            preferredMode: 'any',
+            budgetLevel: 'any'
+        };
+    }
 
-  await setDoc(userRef, profileData, { merge: true });
+    setDoc(userRef, profileData, { merge: true })
+        .catch(error => {
+            const permissionError = new FirestorePermissionError({
+                path: userRef.path,
+                operation: isNewUser ? 'create' : 'update',
+                requestResourceData: profileData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+  }).catch(error => {
+      // This catches errors from getDoc
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'get',
+      });
+      errorEmitter.emit('permission-error', permissionError);
+  });
 }
 
 
@@ -39,14 +58,22 @@ export async function upsertUserProfile(db: Firestore, user: User): Promise<void
  * @param userId The ID of the user.
  * @param displayName The new display name.
  */
-export async function updateUserDisplayName(db: Firestore, userId: string, displayName: string): Promise<void> {
+export function updateUserDisplayName(db: Firestore, userId: string, displayName: string): void {
     if (!displayName || displayName.trim().length === 0) {
         throw new Error("Display name cannot be empty.");
     }
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-        displayName: displayName
-    });
+    const dataToUpdate = { displayName };
+
+    updateDoc(userRef, dataToUpdate)
+        .catch(error => {
+            const permissionError = new FirestorePermissionError({
+                path: userRef.path,
+                operation: 'update',
+                requestResourceData: dataToUpdate,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
 }
 
 /**
@@ -55,12 +82,20 @@ export async function updateUserDisplayName(db: Firestore, userId: string, displ
  * @param userId The ID of the user.
  * @param preferences The travel preferences to update.
  */
-export async function updateUserPreferences(db: Firestore, userId: string, preferences?: Partial<UserProfile['travelPreferences']>): Promise<void> {
+export function updateUserPreferences(db: Firestore, userId: string, preferences?: Partial<UserProfile['travelPreferences']>): void {
     if (!preferences) {
         throw new Error("Preferences cannot be empty.");
     }
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-        travelPreferences: preferences
-    });
+    const dataToUpdate = { travelPreferences: preferences };
+    
+    updateDoc(userRef, dataToUpdate)
+        .catch(error => {
+            const permissionError = new FirestorePermissionError({
+                path: userRef.path,
+                operation: 'update',
+                requestResourceData: dataToUpdate,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
 }

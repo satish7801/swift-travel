@@ -7,6 +7,7 @@ import { SidebarNav } from '@/components/sidebar-nav';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import UserAuth from '@/components/user-auth';
 import { ThemeProvider } from '@/components/theme-provider';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
   title: 'SwiftTravel',
@@ -34,22 +35,24 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <FirebaseClientProvider>
-            <SidebarProvider>
-              <Sidebar>
-                <SidebarHeader>
-                  <Logo />
-                </SidebarHeader>
-                <SidebarContent>
-                  <SidebarNav />
-                </SidebarContent>
-                <SidebarFooter>
-                  <UserAuth />
-                </SidebarFooter>
-              </Sidebar>
-              <SidebarInset>
-                {children}
-              </SidebarInset>
-            </SidebarProvider>
+            <FirebaseErrorListener>
+              <SidebarProvider>
+                <Sidebar>
+                  <SidebarHeader>
+                    <Logo />
+                  </SidebarHeader>
+                  <SidebarContent>
+                    <SidebarNav />
+                  </SidebarContent>
+                  <SidebarFooter>
+                    <UserAuth />
+                  </SidebarFooter>
+                </Sidebar>
+                <SidebarInset>
+                  {children}
+                </SidebarInset>
+              </SidebarProvider>
+            </FirebaseErrorListener>
           </FirebaseClientProvider>
           <Toaster />
         </ThemeProvider>

@@ -37,6 +37,7 @@ export default function PlannerPage() {
   const [itinerary, setItinerary] = React.useState<ItineraryData | null>(null);
   const [itineraryOverview, setItineraryOverview] = React.useState<GenerateItineraryOverviewOutput | null>(null);
   const [savedPlanId, setSavedPlanId] = React.useState<string | null>(null);
+  const [planJustSaved, setPlanJustSaved] = React.useState(false);
 
   const [isLoadingAttractions, setIsLoadingAttractions] = React.useState(false);
   const [isGeneratingItinerary, setIsGeneratingItinerary] = React.useState(false);
@@ -56,6 +57,7 @@ export default function PlannerPage() {
     setItinerary(null);
     setItineraryOverview(null);
     setSavedPlanId(null);
+    setPlanJustSaved(false);
     setCurrentCity(city);
 
     const result = await findAttractionsAction(city);
@@ -90,6 +92,7 @@ export default function PlannerPage() {
     setItinerary(null);
     setItineraryOverview(null);
     setSavedPlanId(null);
+    setPlanJustSaved(false);
     
     const result = await generateItineraryAction(currentCity, Array.from(selectedAttractions));
 
@@ -107,6 +110,7 @@ export default function PlannerPage() {
     setIsGeneratingOverview(true);
     setItineraryOverview(null);
     setSavedPlanId(null);
+    setPlanJustSaved(false);
 
     const result = await generateItineraryOverviewAction(currentCity, itinerary);
 
@@ -118,22 +122,17 @@ export default function PlannerPage() {
     setIsGeneratingOverview(false);
   }
   
-  const handleSavePlan = async () => {
+  const handleSavePlan = () => {
     if (!user || !firestore || !itinerary || !currentCity) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in and have an itinerary to save it.' });
       return;
     }
     
     setIsSaving(true);
-    try {
-      const newPlanId = await saveItinerary(firestore, user.uid, currentCity, itinerary, itineraryOverview);
-      setSavedPlanId(newPlanId);
-      toast({ title: 'Plan Saved!', description: 'Your itinerary has been saved to "My Plans".' });
-    } catch(error: any) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: error.message || "Could not save your plan." });
-    } finally {
-      setIsSaving(false);
-    }
+    saveItinerary(firestore, user.uid, currentCity, itinerary, itineraryOverview);
+    setPlanJustSaved(true);
+    toast({ title: 'Plan Saved!', description: 'Your itinerary has been saved to "My Plans".' });
+    setIsSaving(false);
   }
 
 
@@ -246,7 +245,7 @@ export default function PlannerPage() {
             </CardContent>
             <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
                 <div className="flex gap-4">
-                  {savedPlanId ? (
+                  {savedPlanId || planJustSaved ? (
                     <Button size="lg" variant="outline" asChild>
                       <Link href="/plans">
                         <CheckCircle />
@@ -367,7 +366,7 @@ export default function PlannerPage() {
                     )}
                 </CardContent>
                 <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
-                  {savedPlanId ? (
+                  {savedPlanId || planJustSaved ? (
                       <Button size="lg" variant="outline" asChild>
                         <Link href="/plans">
                           <CheckCircle />

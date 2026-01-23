@@ -33,11 +33,15 @@ function PlanCard({ plan, onDelete }: { plan: SavedItinerary; onDelete: (id: str
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   
-  const handleDelete = async () => {
+  const handleDelete = () => {
     setIsDeleting(true);
-    await onDelete(plan.id);
-    setIsDeleting(false);
-    setIsDeleteDialogOpen(false);
+    onDelete(plan.id);
+    // The dialog will be closed by the parent component upon successful deletion and re-render.
+    // We can add a timeout to close it anyway if something goes wrong.
+    setTimeout(() => {
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+    }, 3000);
   };
 
   const savedDate = plan.savedAt instanceof Date ? plan.savedAt : new Date((plan.savedAt?.seconds ?? 0) * 1000);
@@ -114,17 +118,14 @@ export default function MyPlansPage() {
     { orderBy: ['savedAt', 'desc'] }
   );
 
-  const handleDeletePlan = async (id: string) => {
+  const handleDeletePlan = (id: string) => {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'Authentication error.' });
       return;
     }
-    try {
-      await deleteItinerary(firestore, user.uid, id);
-      toast({ title: 'Plan Deleted', description: 'The itinerary has been removed.' });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Deletion Failed', description: e.message });
-    }
+    // Call the firestore function which now handles its own errors
+    deleteItinerary(firestore, user.uid, id);
+    toast({ title: 'Plan Deleted', description: 'The itinerary has been removed.' });
   }
 
 

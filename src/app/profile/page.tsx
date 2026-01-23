@@ -82,7 +82,7 @@ export default function ProfilePage() {
     }
   }, [userProfile, form, preferencesForm]);
 
-  const onSubmit = async (data: ProfileFormValues) => {
+  const onSubmit = (data: ProfileFormValues) => {
     if (!user || !firestore) {
         toast({
             variant: "destructive",
@@ -94,12 +94,14 @@ export default function ProfilePage() {
     
     setIsSubmitting(true);
     try {
-      await updateUserDisplayName(firestore, user.uid, data.displayName);
+      updateUserDisplayName(firestore, user.uid, data.displayName);
       toast({
         title: "Profile Updated",
         description: "Your display name has been successfully updated.",
       });
     } catch (error: any) {
+      // This catch is for synchronous errors, like validation.
+      // Firestore errors are handled globally.
       toast({
         variant: "destructive",
         title: "Update Failed",
@@ -110,7 +112,7 @@ export default function ProfilePage() {
     }
   };
 
-  const onPreferencesSubmit = async (data: PreferencesFormValues) => {
+  const onPreferencesSubmit = (data: PreferencesFormValues) => {
     if (!user || !firestore) {
         toast({
             variant: "destructive",
@@ -122,7 +124,7 @@ export default function ProfilePage() {
     
     setIsSubmittingPrefs(true);
     try {
-      await updateUserPreferences(firestore, user.uid, data);
+      updateUserPreferences(firestore, user.uid, data);
       toast({
         title: "Preferences Saved",
         description: "Your travel preferences have been updated.",
