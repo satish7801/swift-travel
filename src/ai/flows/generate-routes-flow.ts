@@ -15,6 +15,10 @@ const GenerateRoutesInputSchema = z.object({
   from: z.string().describe('The departure location.'),
   to: z.string().describe('The arrival location.'),
   date: z.string().optional().describe('The desired travel date in YYYY-MM-DD format.'),
+  travelPreferences: z.object({
+    preferredMode: z.enum(['flight', 'train', 'bus', 'any']).optional(),
+    budgetLevel: z.enum(['budget', 'mid-range', 'luxury', 'any']).optional(),
+  }).optional().describe("The user's travel preferences to tailor the results."),
 });
 export type GenerateRoutesInput = z.infer<typeof GenerateRoutesInputSchema>;
 
@@ -58,6 +62,12 @@ const prompt = ai.definePrompt({
   From: {{{from}}}
   To: {{{to}}}
   Date: {{{date}}}
+
+  {{#if travelPreferences}}
+  The user has specified the following travel preferences. Please try to tailor the results to match them by generating more routes that align with their choices.
+  - Preferred Mode: {{{travelPreferences.preferredMode}}}
+  - Budget Level: {{{travelPreferences.budgetLevel}}}
+  {{/if}}
 
   - Create a mix of transport modes (flight, train, bus).
   - For multi-leg journeys, ensure the locations and times are logical.

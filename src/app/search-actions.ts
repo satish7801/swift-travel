@@ -5,7 +5,7 @@ import { confirmLocationChoice } from '@/ai/flows/confirm-location-choice';
 import { findLocations } from '@/ai/flows/find-locations-flow';
 import type { SearchFilters } from '@/components/search-form';
 import { searchFormSchema } from '@/components/search-form';
-import type { Route } from '@/lib/types';
+import type { Route, UserProfile } from '@/lib/types';
 
 /**
  * Validates a location string using an AI-powered location search and confirmation step.
@@ -39,7 +39,10 @@ async function validateLocation(location: string): Promise<string> {
 }
 
 
-export async function searchRoutesAction(filters: SearchFilters): Promise<Route[]> {
+export async function searchRoutesAction(
+    filters: SearchFilters,
+    preferences?: Partial<UserProfile['travelPreferences']>
+): Promise<Route[]> {
     const validatedFields = searchFormSchema.safeParse(filters);
     
     if (!validatedFields.success) {
@@ -58,7 +61,8 @@ export async function searchRoutesAction(filters: SearchFilters): Promise<Route[
         const input = {
           from: validatedFrom,
           to: validatedTo,
-          date: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+          date: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          travelPreferences: preferences,
         }
 
         const aiResponse = await generateRoutes(input);

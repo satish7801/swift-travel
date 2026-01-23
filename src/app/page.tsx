@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import SearchForm, { SearchFilters, searchFormSchema } from '@/components/search-form';
 import SearchResults from '@/components/search-results';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import type { Route, TransportMode } from '@/lib/types';
+import type { Route, TransportMode, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { searchRoutesAction } from './search-actions';
 import { parseDuration } from '@/lib/utils';
@@ -15,6 +15,7 @@ import ChatWidget from '@/components/chat-widget';
 import SuggestedRoutes from '@/components/suggested-routes';
 import FilterControls from '@/components/filter-controls';
 import ResultsChart from '@/components/results-chart';
+import { useDoc, useUser } from '@/firebase';
 
 export type SortKey = 'default' | 'price' | 'duration' | 'transfers' | 'carbon';
 
@@ -24,6 +25,11 @@ export default function Home() {
   const [sortBy, setSortBy] = React.useState<SortKey>('default');
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-plane');
   const { toast } = useToast();
+
+  const { user } = useUser();
+  const { data: userProfile } = useDoc<UserProfile>(
+    user ? `users/${user.uid}` : ''
+  );
 
   const [transportModes, setTransportModes] = React.useState<Set<TransportMode>>(new Set(['flight', 'train', 'bus']));
   const [maxPrice, setMaxPrice] = React.useState<number | undefined>(undefined);
@@ -61,7 +67,7 @@ export default function Home() {
     setNumStops(-1);
 
     try {
-      const results = await searchRoutesAction(filters);
+      const results = await searchRoutesAction(filters, userProfile?.travelPreferences);
       setSearchResults(results);
       if (results.length > 0) {
         const newMaxPrice = Math.max(...results.map(r => r.price));
