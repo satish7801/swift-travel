@@ -7,6 +7,9 @@ import RouteCard from '@/components/route-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import type { Route } from '@/lib/types';
+import VideoPlayerDialog from '@/components/video-player-dialog';
+
+export const maxDuration = 120; // Extend server action timeout for video generation
 
 export default function MyTripsPage() {
   const { user, status } = useUser();
@@ -15,6 +18,20 @@ export default function MyTripsPage() {
     user ? `users/${user.uid}/trips` : '',
     { orderBy: ['savedAt', 'desc'] }
   );
+  
+  const [videoState, setVideoState] = React.useState<{ route: Route | null; isOpen: boolean }>({
+    route: null,
+    isOpen: false,
+  });
+
+  const handleGenerateVideo = (route: Route) => {
+    setVideoState({ route, isOpen: true });
+  };
+
+  const handleCloseVideoDialog = () => {
+    setVideoState({ route: null, isOpen: false });
+  }
+
 
   if (status === 'loading' || status === 'loading-uninitialized') {
     return (
@@ -67,7 +84,7 @@ export default function MyTripsPage() {
       {trips && trips.length > 0 ? (
         <div className="space-y-4">
           {trips.map(trip => (
-            <RouteCard key={trip.id} route={trip} isSavedTrip />
+            <RouteCard key={trip.id} route={trip} isSavedTrip onGenerateVideo={handleGenerateVideo} />
           ))}
         </div>
       ) : (
@@ -79,6 +96,11 @@ export default function MyTripsPage() {
           </Button>
         </div>
       )}
+      <VideoPlayerDialog
+        route={videoState.route}
+        isOpen={videoState.isOpen}
+        onClose={handleCloseVideoDialog}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowRight, Bus, Leaf, Loader2, MoreHorizontal, MoreVertical, Plane, TrainFront, Trash2 } from 'lucide-react';
+import { ArrowRight, Bus, Leaf, Loader2, MoreHorizontal, MoreVertical, Plane, TrainFront, Trash2, Film } from 'lucide-react';
 import type { Route, TransportMode } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -54,7 +55,7 @@ function formatTime(dateString: string) {
   return new Date(dateString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
-export default function RouteCard({ route, isSavedTrip }: { route: Route & { id: string }, isSavedTrip?: boolean }) {
+export default function RouteCard({ route, isSavedTrip, onGenerateVideo }: { route: Route & { id: string }, isSavedTrip?: boolean, onGenerateVideo?: (route: Route) => void }) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -136,6 +137,11 @@ export default function RouteCard({ route, isSavedTrip }: { route: Route & { id:
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onGenerateVideo?.(route)}>
+                            <Film className="mr-2 h-4 w-4" />
+                            <span>Generate Video</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
                             <Trash2 className="mr-2 h-4 w-4" />
                             <span>Delete</span>
