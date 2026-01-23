@@ -4,18 +4,22 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Loader2, MapPin, Sparkles, Wand2, BookOpen, Lightbulb, Youtube, Wallet, CalendarDays, Car, ShoppingBag } from 'lucide-react';
+import { Loader2, MapPin, Sparkles, Wand2, BookOpen, Lightbulb, Youtube, Wallet, CalendarDays, Car, ShoppingBag, Save, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { findAttractionsAction, generateItineraryAction, generateItineraryOverviewAction } from './actions';
 import type { GenerateItineraryOutput as ItineraryData } from '@/ai/flows/generate-itinerary-flow';
 import type { GenerateItineraryOverviewOutput } from '@/ai/flows/generate-itinerary-overview-flow';
 import { Separator } from '@/components/ui/separator';
+import { useUser, useFirestore } from '@/firebase';
+import { saveItinerary } from '@/firebase/firestore/itineraries';
+
 
 const cityFormSchema = z.object({
   city: z.string().min(2, { message: 'Please enter a city name.' }),
@@ -25,15 +29,19 @@ type CityFormValues = z.infer<typeof cityFormSchema>;
 
 export default function PlannerPage() {
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
   
   const [attractions, setAttractions] = React.useState<string[]>([]);
   const [selectedAttractions, setSelectedAttractions] = React.useState<Set<string>>(new Set());
   const [itinerary, setItinerary] = React.useState<ItineraryData | null>(null);
   const [itineraryOverview, setItineraryOverview] = React.useState<GenerateItineraryOverviewOutput | null>(null);
+  const [savedPlanId, setSavedPlanId] = React.useState<string | null>(null);
 
   const [isLoadingAttractions, setIsLoadingAttractions] = React.useState(false);
   const [isGeneratingItinerary, setIsGeneratingItinerary] = React.useState(false);
   const [isGeneratingOverview, setIsGeneratingOverview] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
   const [currentCity, setCurrentCity] = React.useState('');
 
   const cityForm = useForm<CityFormValues>({
@@ -47,6 +55,7 @@ export default function PlannerPage() {
     setSelectedAttractions(new Set());
     setItinerary(null);
     setItineraryOverview(null);
+    setSavedPlanId(null);
     setCurrentCity(city);
 
     const result = await findAttractionsAction(city);
@@ -80,6 +89,7 @@ export default function PlannerPage() {
     setIsGeneratingItinerary(true);
     setItinerary(null);
     setItineraryOverview(null);
+    setSavedPlanId(null);
     
     const result = await generateItineraryAction(currentCity, Array.from(selectedAttractions));
 
@@ -96,6 +106,7 @@ export default function PlannerPage() {
 
     setIsGeneratingOverview(true);
     setItineraryOverview(null);
+    setSavedPlanId(null);
 
     const result = await generateItineraryOverviewAction(currentCity, itinerary);
 
@@ -106,6 +117,25 @@ export default function PlannerPage() {
     }
     setIsGeneratingOverview(false);
   }
+  
+  const handleSavePlan = async () => {
+    if (!user || !firestore || !itinerary || !currentCity) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in and have an itinerary to save it.' });
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const newPlanId = await saveItinerary(firestore, user.uid, currentCity, itinerary, itineraryOverview);
+      setSavedPlanId(newPlanId);
+      toast({ title: 'Plan Saved!', description: 'Your itinerary has been saved to "My Plans".' });
+    } catch(error: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: error.message || "Could not save your plan." });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -215,11 +245,25 @@ export default function PlannerPage() {
                 ))}
             </CardContent>
             <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
-                <p className="text-sm text-muted-foreground">Want a more detailed, blog-style view?</p>
-                <Button size="lg" onClick={handleGenerateOverview} disabled={isGeneratingOverview}>
-                    {isGeneratingOverview ? <Loader2 className="animate-spin" /> : <BookOpen />}
-                    <span className="ml-2">Generate Travel Blog</span>
-                </Button>
+                <div className="flex gap-4">
+                  {savedPlanId ? (
+                    <Button size="lg" variant="outline" asChild>
+                      <Link href="/plans">
+                        <CheckCircle />
+                        <span className="ml-2">View Saved Plans</span>
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button size="lg" onClick={handleSavePlan} disabled={!user || isSaving}>
+                      {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                      <span className="ml-2">Save Plan</span>
+                    </Button>
+                  )}
+                  <Button size="lg" onClick={handleGenerateOverview} disabled={isGeneratingOverview}>
+                      {isGeneratingOverview ? <Loader2 className="animate-spin" /> : <BookOpen />}
+                      <span className="ml-2">Generate Travel Blog</span>
+                  </Button>
+                </div>
             </CardFooter>
           </Card>
         )}
@@ -322,6 +366,21 @@ export default function PlannerPage() {
                         </div>
                     )}
                 </CardContent>
+                <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
+                  {savedPlanId ? (
+                      <Button size="lg" variant="outline" asChild>
+                        <Link href="/plans">
+                          <CheckCircle />
+                          <span className="ml-2">View Saved Plans</span>
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button size="lg" onClick={handleSavePlan} disabled={!user || isSaving}>
+                        {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                        <span className="ml-2">Save Plan</span>
+                      </Button>
+                    )}
+                </CardFooter>
             </Card>
         )}
 

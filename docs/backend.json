@@ -71,6 +71,43 @@
         }
       },
       "required": ["legs", "totalDuration", "price", "availability", "carbonFootprint", "savedAt"]
+    },
+    "Itinerary": {
+      "title": "Saved Itinerary",
+      "description": "Represents a user's saved multi-day travel itinerary.",
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string",
+          "description": "The main city for the trip."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the itinerary."
+        },
+        "summary": {
+          "type": "string",
+          "description": "A brief summary of the itinerary."
+        },
+        "totalDays": {
+          "type": "number",
+          "description": "Total number of days for the itinerary."
+        },
+        "itinerary": {
+          "type": "object",
+          "description": "The structured day-by-day plan."
+        },
+        "overview": {
+          "type": "object",
+          "description": "The rich, blog-style overview of the plan."
+        },
+        "savedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the itinerary was saved."
+        }
+      },
+      "required": ["city", "title", "totalDays", "itinerary", "savedAt"]
     }
   },
   "auth": {
@@ -88,6 +125,12 @@
         "$ref": "#/entities/Trip"
       },
       "description": "Stores the travel routes saved by a user."
+    },
+    "/users/{userId}/itineraries/{itineraryId}": {
+      "schema": {
+        "$ref": "#/entities/Itinerary"
+      },
+      "description": "Stores the travel itineraries created and saved by a user."
     }
   }
 }

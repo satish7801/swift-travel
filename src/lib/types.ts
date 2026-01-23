@@ -1,3 +1,6 @@
+import type { GenerateItineraryOutput } from "@/ai/flows/generate-itinerary-flow";
+import type { GenerateItineraryOverviewOutput } from "@/ai/flows/generate-itinerary-overview-flow";
+
 export type TransportMode = 'bus' | 'train' | 'flight';
 
 export interface Leg {
@@ -29,4 +32,18 @@ export interface UserProfile {
     preferredMode?: 'flight' | 'train' | 'bus' | 'any';
     budgetLevel?: 'budget' | 'mid-range' | 'luxury' | 'any';
   };
+}
+
+export interface SavedItinerary {
+  id: string;
+  city: string;
+  title: string;
+  summary: string;
+  totalDays: number;
+  itinerary: GenerateItineraryOutput;
+  overview?: GenerateItineraryOverviewOutput;
+  savedAt: {
+    seconds: number;
+    nanoseconds: number;
+  } | Date;
 }
