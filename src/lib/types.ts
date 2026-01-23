@@ -18,4 +18,5 @@ export interface Route {
   totalDuration: string;
   price: number;
   availability: 'Available' | 'Filling Fast' | 'Few Seats Left' | 'Sold Out';
+  carbonFootprint: number;
 }

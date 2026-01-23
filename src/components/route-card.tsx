@@ -1,4 +1,4 @@
-import { ArrowRight, Bus, MoreVertical, Plane, TrainFront } from 'lucide-react';
+import { ArrowRight, Bus, Leaf, MoreVertical, Plane, TrainFront } from 'lucide-react';
 import type { Route, TransportMode } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,13 @@ export default function RouteCard({ route }: { route: Route }) {
             </div>
             <div>
                 <p className="font-semibold text-lg">{route.legs[0].departureLocation.split('(')[0].trim()} <ArrowRight className="inline-block h-4 w-4 mx-1" /> {route.legs[route.legs.length - 1].arrivalLocation.split('(')[0].trim()}</p>
-                <p className="text-sm text-muted-foreground">Total duration: {route.totalDuration}</p>
+                <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-sm text-muted-foreground">
+                    <p>Total duration: {route.totalDuration}</p>
+                    <div className="flex items-center gap-1">
+                        <Leaf className="h-4 w-4 text-success" />
+                        <span>{route.carbonFootprint.toFixed(1)} kg CO₂e</span>
+                    </div>
+                </div>
             </div>
         </div>
         <div className="text-right">

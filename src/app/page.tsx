@@ -11,7 +11,7 @@ import { searchRoutesAction } from './search-actions';
 import { parseDuration } from '@/lib/utils';
 import ChatWidget from '@/components/chat-widget';
 
-export type SortKey = 'default' | 'price' | 'duration' | 'transfers';
+export type SortKey = 'default' | 'price' | 'duration' | 'transfers' | 'carbon';
 
 export default function Home() {
   const [searchResults, setSearchResults] = React.useState<Route[] | null>(null);
@@ -54,6 +54,9 @@ export default function Home() {
       }
       if (sortBy === 'transfers') {
         return a.legs.length - b.legs.length;
+      }
+      if (sortBy === 'carbon') {
+        return a.carbonFootprint - b.carbonFootprint;
       }
       return 0;
     });

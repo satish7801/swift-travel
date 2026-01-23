@@ -17,6 +17,7 @@ const sortOptions: { label: string; value: SortKey }[] = [
     { label: 'Cheapest', value: 'price' },
     { label: 'Fastest', value: 'duration' },
     { label: 'Least Transfers', value: 'transfers' },
+    { label: 'Eco-Friendly', value: 'carbon' },
 ];
 
 function SortControls({ sortBy, onSortChange }: { sortBy: SortKey; onSortChange: (sortBy: SortKey) => void; }) {

@@ -36,6 +36,7 @@ const RouteSchema = z.object({
     totalDuration: z.string().describe('The total duration of the route, including layovers.'),
     price: z.number().describe('The total price of the route in INR.'),
     availability: z.enum(['Available', 'Filling Fast', 'Few Seats Left', 'Sold Out']).describe('The seat availability status.'),
+    carbonFootprint: z.number().describe('The estimated carbon footprint for the route in kg CO2e.'),
 });
 
 const GenerateRoutesOutputSchema = z.object({
@@ -61,6 +62,7 @@ const prompt = ai.definePrompt({
   - Create a mix of transport modes (flight, train, bus).
   - For multi-leg journeys, ensure the locations and times are logical.
   - Provide realistic durations, prices (in INR), and operators for travel in India.
+  - Provide a realistic carbon footprint estimate in kg CO2e for each route, considering the mode of transport.
   - Ensure the IDs are unique for each route and leg (e.g., route-1, leg-1-1).
   - The departure and arrival locations for legs should be specific (e.g., 'New Delhi (NDLS)', 'Mumbai (BOM)').
   - The total duration should account for layover times if there are multiple legs.
