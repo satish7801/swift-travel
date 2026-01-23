@@ -7,12 +7,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import SearchForm, { SearchFilters, searchFormSchema } from '@/components/search-form';
 import SearchResults from '@/components/search-results';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import type { Route } from '@/lib/types';
+import type { Route, TransportMode } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { searchRoutesAction } from './search-actions';
 import { parseDuration } from '@/lib/utils';
 import ChatWidget from '@/components/chat-widget';
 import SuggestedRoutes from '@/components/suggested-routes';
+import FilterControls from '@/components/filter-controls';
 
 export type SortKey = 'default' | 'price' | 'duration' | 'transfers' | 'carbon';
 
@@ -23,6 +24,10 @@ export default function Home() {
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-plane');
   const { toast } = useToast();
 
+  const [transportModes, setTransportModes] = React.useState<Set<TransportMode>>(new Set(['flight', 'train', 'bus']));
+  const [maxPrice, setMaxPrice] = React.useState<number | undefined>(undefined);
+  const [numStops, setNumStops] = React.useState<number>(-1); // -1 for any
+
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchFormSchema),
     defaultValues: {
@@ -31,15 +36,38 @@ export default function Home() {
       date: new Date(),
     },
   });
+  
+  const priceBounds = React.useMemo((): [number, number] => {
+    if (!searchResults) return [0, 100000];
+    const prices = searchResults.map(r => r.price);
+    if (prices.length === 0) return [0, 100000];
+    return [Math.min(...prices), Math.max(...prices)];
+  }, [searchResults]);
+
+  React.useEffect(() => {
+    if (priceBounds) {
+      setMaxPrice(priceBounds[1]);
+    }
+  }, [priceBounds]);
+
 
   const handleSearch = async (filters: SearchFilters) => {
     setIsSearching(true);
     setSearchResults(null);
-    setSortBy('default'); // Reset sort on new search
+    setSortBy('default');
+    // Reset filters on new search
+    setTransportModes(new Set(['flight', 'train', 'bus']));
+    setNumStops(-1);
 
     try {
       const results = await searchRoutesAction(filters);
       setSearchResults(results);
+      if (results.length > 0) {
+        const newMaxPrice = Math.max(...results.map(r => r.price));
+        setMaxPrice(newMaxPrice);
+      } else {
+        setMaxPrice(undefined);
+      }
     } catch (error: any) {
       console.error(error);
       toast({
@@ -47,7 +75,7 @@ export default function Home() {
         title: "Search Failed",
         description: error.message || "Could not fetch routes.",
       });
-      setSearchResults([]); // show 'No results' message
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -57,12 +85,51 @@ export default function Home() {
     form.setValue('to', destination);
     document.querySelector('.relative.z-10')?.scrollIntoView({ behavior: 'smooth' });
   };
+  
+  const handleTransportModeChange = (mode: TransportMode, checked: boolean) => {
+    setTransportModes(prev => {
+        const newModes = new Set(prev);
+        if (checked) {
+            newModes.add(mode);
+        } else {
+            newModes.delete(mode);
+        }
+        return newModes;
+    });
+  };
+
+  const filteredResults = React.useMemo(() => {
+    if (!searchResults) return null;
+
+    return searchResults.filter(route => {
+      // Filter by transport mode
+      const hasValidMode = route.legs.every(leg => transportModes.has(leg.mode));
+      if (!hasValidMode) return false;
+
+      // Filter by price
+      if (maxPrice !== undefined && route.price > maxPrice) {
+        return false;
+      }
+
+      // Filter by stops
+      if (numStops !== -1) {
+        const stops = route.legs.length - 1;
+        if (numStops === 2) { // 2+ stops
+            if (stops < 2) return false;
+        } else { // Direct or 1 stop
+            if (stops !== numStops) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [searchResults, transportModes, maxPrice, numStops]);
 
   const sortedResults = React.useMemo(() => {
-    if (!searchResults) return null;
-    if (sortBy === 'default') return searchResults;
+    if (!filteredResults) return null;
+    if (sortBy === 'default') return filteredResults;
 
-    return [...searchResults].sort((a, b) => {
+    return [...filteredResults].sort((a, b) => {
       if (sortBy === 'price') {
         return a.price - b.price;
       }
@@ -77,7 +144,7 @@ export default function Home() {
       }
       return 0;
     });
-  }, [searchResults, sortBy]);
+  }, [filteredResults, sortBy]);
 
 
   return (
@@ -111,11 +178,25 @@ export default function Home() {
       <div className="container mx-auto px-4 mt-8 pb-8">
         <div className="space-y-8">
           <SuggestedRoutes onDestinationClick={handleDestinationClick} />
+          
+          {searchResults && searchResults.length > 0 && maxPrice !== undefined && (
+            <FilterControls
+                transportModes={transportModes}
+                onTransportModeChange={handleTransportModeChange}
+                priceBounds={priceBounds}
+                maxPrice={maxPrice}
+                onMaxPriceChange={setMaxPrice}
+                numStops={numStops}
+                onNumStopsChange={setNumStops}
+            />
+          )}
+
           <SearchResults
             results={sortedResults}
             isLoading={isSearching}
             sortBy={sortBy}
             onSortChange={setSortBy}
+            initialResultCount={searchResults?.length ?? 0}
           />
         </div>
       </div>

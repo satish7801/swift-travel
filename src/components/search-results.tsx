@@ -10,6 +10,7 @@ interface SearchResultsProps {
   isLoading: boolean;
   sortBy: SortKey;
   onSortChange: (sortBy: SortKey) => void;
+  initialResultCount: number;
 }
 
 const sortOptions: { label: string; value: SortKey }[] = [
@@ -44,7 +45,7 @@ function SortControls({ sortBy, onSortChange }: { sortBy: SortKey; onSortChange:
     );
 }
 
-export default function SearchResults({ results, isLoading, sortBy, onSortChange }: SearchResultsProps) {
+export default function SearchResults({ results, isLoading, sortBy, onSortChange, initialResultCount }: SearchResultsProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -63,8 +64,12 @@ export default function SearchResults({ results, isLoading, sortBy, onSortChange
   if (results.length === 0) {
     return (
         <div className="text-center py-16">
-            <h2 className="text-2xl font-headline font-semibold">No routes found</h2>
-            <p className="text-muted-foreground mt-2">Try adjusting your search criteria.</p>
+            <h2 className="text-2xl font-headline font-semibold">
+                {initialResultCount > 0 ? 'No routes match your filters' : 'No routes found'}
+            </h2>
+            <p className="text-muted-foreground mt-2">
+                {initialResultCount > 0 ? 'Try adjusting your filter criteria.' : 'Try adjusting your search criteria.'}
+            </p>
         </div>
     );
   }
