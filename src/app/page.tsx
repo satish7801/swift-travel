@@ -41,9 +41,14 @@ export default function Home() {
     defaultValues: {
       from: "",
       to: "",
-      date: new Date(),
+      date: undefined,
     },
   });
+
+  // Set date on client side to avoid hydration mismatch
+  React.useEffect(() => {
+    form.setValue('date', new Date());
+  }, [form]);
   
   const priceBounds = React.useMemo((): [number, number] => {
     if (!searchResults) return [0, 100000];
