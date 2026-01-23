@@ -77,10 +77,8 @@ function PlanCard({ plan, onDelete }: { plan: SavedItinerary; onDelete: (id: str
           </div>
         </CardContent>
         <CardFooter>
-          {/* In a future version, this could link to a detailed view page */}
           <Button asChild variant="outline">
-            {/* <Link href={`/plans/${plan.id}`}>View Plan</Link> */}
-             <span className="cursor-not-allowed">View Full Plan (Coming Soon)</span>
+            <Link href={`/plans/${plan.id}`}>View Plan</Link>
           </Button>
         </CardFooter>
       </Card>
