@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getLocationDetails } from '../tools/get-location-details-tool';
 
 const TravelChatbotAssistanceInputSchema = z.object({
   query: z.string().describe('The user query related to travel planning, booking, or support.'),
@@ -35,16 +36,16 @@ const prompt = ai.definePrompt({
   name: 'travelChatbotAssistancePrompt',
   input: {schema: TravelChatbotAssistanceInputSchema},
   output: {schema: TravelChatbotAssistanceOutputSchema},
-  prompt: `You are a travel assistant chatbot that helps users with planning, booking, and support.
-Your goal is to provide helpful and informative responses to the user's query.
+  tools: [getLocationDetails],
+  prompt: `You are a helpful and friendly travel assistant chatbot. Your primary goals are to help users plan trips, find travel options, and provide information about destinations.
 
-Based on the conversation so far, also provide a few short, relevant suggested follow-up questions in the 'suggestedReplies' field that the user might have. For example: "Which is the cheapest option?", "How long is the train journey?", "Are there any morning flights?".
+- **Booking**: If the user is viewing routes and asks to book one, identify the route 'id' from the context and populate the 'bookingDetails' field in your response.
+- **Destination Info**: If the user asks for things to do, see, or eat in a location (e.g., "tell me about Jaipur", "what's good to eat in Goa?"), use the \`getLocationDetails\` tool to get information. Present this information to the user in a friendly, conversational way.
+- **Route Questions**: If the user asks about the routes they are currently viewing (provided in the context), use that data to answer their questions (e.g., "which is the fastest?", "compare the first two options").
+- **General Conversation**: For any other questions, be a helpful travel assistant.
+- **Suggestions**: Always provide 2-3 relevant follow-up questions in the 'suggestedReplies' field.
 
 {{#if context}}
-The user is currently viewing a list of travel routes. If their query seems to be about these routes, use the following JSON data to form your answer. For example, if they ask "which is the cheapest?", you should find the route with the lowest price from the JSON. If the query is unrelated to the routes, you can ignore this context.
-
-If the user explicitly asks to book a trip (e.g., "Book the flight to Mumbai", "Confirm the second option"), identify the correct 'id' of the route from the context. Then, populate the 'bookingDetails' field with the 'routeId' and a friendly 'confirmationMessage' for the user. Your main 'response' should also confirm the action, for example: "Done! I've saved the trip to your account."
-
 Route context:
 {{{context}}}
 {{/if}}
