@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
 import { ArrowRightLeft, Calendar as CalendarIcon, Loader2, MapPin, Search } from "lucide-react";
@@ -14,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const searchFormSchema = z.object({
+export const searchFormSchema = z.object({
   from: z.string().min(2, { message: "Please enter a departure location." }),
   to: z.string().min(2, { message: "Please enter a destination." }),
   date: z.date().optional(),
@@ -23,20 +22,12 @@ const searchFormSchema = z.object({
 export type SearchFilters = z.infer<typeof searchFormSchema>;
 
 interface SearchFormProps {
+  form: UseFormReturn<SearchFilters>;
   onSearch: (filters: SearchFilters) => void;
   isSearching: boolean;
 }
 
-export default function SearchForm({ onSearch, isSearching }: SearchFormProps) {
-  const form = useForm<SearchFilters>({
-    resolver: zodResolver(searchFormSchema),
-    defaultValues: {
-      from: "",
-      to: "",
-      date: new Date(),
-    },
-  });
-
+export default function SearchForm({ form, onSearch, isSearching }: SearchFormProps) {
   return (
     <Card className="shadow-lg">
       <CardContent className="p-4 md:p-6">

@@ -2,19 +2,12 @@
 
 import { generateRoutes } from '@/ai/flows/generate-routes-flow';
 import type { SearchFilters } from '@/components/search-form';
+import { searchFormSchema } from '@/components/search-form';
 import type { Route } from '@/lib/types';
-import { z } from 'zod';
-
-// This schema should match the one in search-form.tsx
-const SearchFormSchema = z.object({
-  from: z.string().min(2, { message: "Please enter a departure location." }),
-  to: z.string().min(2, { message: "Please enter a destination." }),
-  date: z.date().optional(),
-});
 
 
 export async function searchRoutesAction(filters: SearchFilters): Promise<Route[]> {
-    const validatedFields = SearchFormSchema.safeParse(filters);
+    const validatedFields = searchFormSchema.safeParse(filters);
     
     if (!validatedFields.success) {
         // This will be caught by the try-catch block in the component

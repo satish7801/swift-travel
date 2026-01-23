@@ -2,7 +2,9 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import SearchForm, { SearchFilters } from '@/components/search-form';
+import { useForm } from "react-hook-form";
+import { zodResolver } from '@hookform/resolvers/zod';
+import SearchForm, { SearchFilters, searchFormSchema } from '@/components/search-form';
 import SearchResults from '@/components/search-results';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import type { Route } from '@/lib/types';
@@ -10,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { searchRoutesAction } from './search-actions';
 import { parseDuration } from '@/lib/utils';
 import ChatWidget from '@/components/chat-widget';
+import SuggestedRoutes from '@/components/suggested-routes';
 
 export type SortKey = 'default' | 'price' | 'duration' | 'transfers' | 'carbon';
 
@@ -19,6 +22,15 @@ export default function Home() {
   const [sortBy, setSortBy] = React.useState<SortKey>('default');
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-plane');
   const { toast } = useToast();
+
+  const form = useForm<SearchFilters>({
+    resolver: zodResolver(searchFormSchema),
+    defaultValues: {
+      from: "",
+      to: "",
+      date: new Date(),
+    },
+  });
 
   const handleSearch = async (filters: SearchFilters) => {
     setIsSearching(true);
@@ -41,6 +53,11 @@ export default function Home() {
     }
   };
   
+  const handleDestinationClick = (destination: string) => {
+    form.setValue('to', destination);
+    document.querySelector('.relative.z-10')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const sortedResults = React.useMemo(() => {
     if (!searchResults) return null;
     if (sortBy === 'default') return searchResults;
@@ -88,16 +105,19 @@ export default function Home() {
       </div>
 
       <div className="container mx-auto px-4 -mt-24 relative z-10">
-        <SearchForm onSearch={handleSearch} isSearching={isSearching} />
+        <SearchForm form={form} onSearch={handleSearch} isSearching={isSearching} />
       </div>
       
       <div className="container mx-auto px-4 mt-8 pb-8">
-        <SearchResults
-          results={sortedResults}
-          isLoading={isSearching}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-        />
+        <div className="space-y-8">
+          <SuggestedRoutes onDestinationClick={handleDestinationClick} />
+          <SearchResults
+            results={sortedResults}
+            isLoading={isSearching}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+          />
+        </div>
       </div>
       <ChatWidget results={sortedResults} />
     </main>
