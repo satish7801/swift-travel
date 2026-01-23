@@ -1,3 +1,34 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-plane",
+      "description": "View from an airplane window looking at the wing over clouds",
+      "imageUrl": "https://images.unsplash.com/photo-1575637774236-3a4b04deae94?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwbGFuZSUyMHdpbmd8ZW58MHx8fHwxNzY5MTcxNDc4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "plane wing"
+    },
+    {
+      "id": "destination-paris",
+      "description": "The Eiffel Tower in Paris",
+      "imageUrl": "https://images.unsplash.com/photo-1570097703229-b195d6dd291f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxlaWZmZWwlMjB0b3dlcnxlbnwwfHx8fDE3NjkxMjExODl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "eiffel tower"
+    },
+    {
+      "id": "destination-tokyo",
+      "description": "A busy street in Tokyo at night",
+      "imageUrl": "https://images.unsplash.com/photo-1573455494060-c5595004fb6c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx0b2t5byUyMHN0cmVldHxlbnwwfHx8fDE3NjkxNzE0Nzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tokyo street"
+    },
+    {
+      "id": "destination-rome",
+      "description": "The Colosseum in Rome",
+      "imageUrl": "https://images.unsplash.com/photo-1662898290891-a6c7f022e851?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxjb2xvc3NldW0lMjByb21lfGVufDB8fHx8MTc2OTE1MTEwN3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "colosseum rome"
+    },
+    {
+      "id": "destination-nyc",
+      "description": "The skyline of New York City",
+      "imageUrl": "https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxuZXclMjB5b3JrfGVufDB8fHx8MTc2OTEwMTc1OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "new york"
+    }
+  ]
 }
