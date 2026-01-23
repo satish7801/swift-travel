@@ -2,30 +2,30 @@
 
 import { generateRoutes } from '@/ai/flows/generate-routes-flow';
 import { confirmLocationChoice } from '@/ai/flows/confirm-location-choice';
-import { searchLocations } from '@/lib/locations';
+import { findLocations } from '@/ai/flows/find-locations-flow';
 import type { SearchFilters } from '@/components/search-form';
 import { searchFormSchema } from '@/components/search-form';
 import type { Route } from '@/lib/types';
 
 /**
- * Validates a location string using a mock location search and an AI confirmation step.
+ * Validates a location string using an AI-powered location search and confirmation step.
  * @param location The user-provided location string.
  * @returns The validated location name.
  * @throws An error if the location cannot be validated.
  */
 async function validateLocation(location: string): Promise<string> {
-    const possibleLocations = searchLocations(location);
+    const { locations: possibleLocations } = await findLocations({ query: location });
 
     if (possibleLocations.length === 0) {
-        throw new Error(`Could not find any locations matching "${location}".`);
+        throw new Error(`Could not find any locations matching "${location}". Please try a different search term.`);
     }
 
-    // If there's a single, perfect match, we can be confident.
-    if (possibleLocations.length === 1 && possibleLocations[0].toLowerCase() === location.toLowerCase()) {
+    // If there's a single match, we can be confident.
+    if (possibleLocations.length === 1) {
         return possibleLocations[0];
     }
     
-    // Otherwise, use AI to confirm the best match.
+    // Otherwise, use another AI step to confirm the best match from the possibilities.
     const confirmation = await confirmLocationChoice({
         locationName: location,
         possibleLocations: possibleLocations,
