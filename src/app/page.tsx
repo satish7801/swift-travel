@@ -14,6 +14,7 @@ import { parseDuration } from '@/lib/utils';
 import ChatWidget from '@/components/chat-widget';
 import SuggestedRoutes from '@/components/suggested-routes';
 import FilterControls from '@/components/filter-controls';
+import ResultsChart from '@/components/results-chart';
 
 export type SortKey = 'default' | 'price' | 'duration' | 'transfers' | 'carbon';
 
@@ -189,6 +190,10 @@ export default function Home() {
                 numStops={numStops}
                 onNumStopsChange={setNumStops}
             />
+          )}
+
+          {filteredResults && filteredResults.length > 0 && (
+            <ResultsChart results={filteredResults} />
           )}
 
           <SearchResults
