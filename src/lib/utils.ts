@@ -26,3 +26,7 @@ export function parseDuration(durationStr: string): number {
 
   return totalMinutes;
 }
+
+export function generateId(length: number = 7): string {
+  return Math.random().toString(36).substring(2, 2 + length);
+}

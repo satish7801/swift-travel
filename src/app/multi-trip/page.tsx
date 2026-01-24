@@ -8,6 +8,10 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { createMultiCityItinerary } from './actions';
+import { estimateDistance } from '@/lib/data/trip-planner';
+import { CITIES } from '@/lib/data/cities';
+import { useRouter } from 'next/navigation';
 
 interface Stop {
     id: string;
@@ -16,6 +20,7 @@ interface Stop {
 }
 
 export default function MultiStopTripPage() {
+    const router = useRouter();
     const [stops, setStops] = React.useState<Stop[]>([
         { id: '1', location: '', date: new Date() },
         { id: '2', location: '', date: undefined },
@@ -43,15 +48,72 @@ export default function MultiStopTripPage() {
         ));
     };
 
+    const autoFillDates = (currentStops: Stop[]) => {
+        const filledStops = currentStops.map(s => ({ ...s })); // Deep copy safe enough for this structure except date object
+
+        // Ensure start date exists
+        if (!filledStops[0].date) {
+            filledStops[0].date = new Date();
+        }
+
+        for (let i = 0; i < filledStops.length - 1; i++) {
+            const current = filledStops[i];
+            const next = filledStops[i + 1];
+
+            // If next date is missing, calculate it
+            if (current.date && !next.date && current.location && next.location) {
+                // Find cities to calculate distance
+                const city1 = CITIES.find(c => c.name.toLowerCase() === current.location.toLowerCase() || c.aliases.includes(current.location.toLowerCase()));
+                const city2 = CITIES.find(c => c.name.toLowerCase() === next.location.toLowerCase() || c.aliases.includes(next.location.toLowerCase()));
+
+                let travelDays = 0;
+                let stayDays = 2; // Default stay assumption
+
+                if (city1 && city2) {
+                    const dist = estimateDistance(city1.lat, city1.lng, city2.lat, city2.lng);
+                    // Approx 800km/day reasonable for mixed transport
+                    travelDays = Math.ceil(dist / 800);
+                }
+
+                const nextDate = new Date(current.date);
+                // Add stay duration + travel time to previous date
+                nextDate.setDate(nextDate.getDate() + stayDays + Math.max(1, travelDays));
+                next.date = nextDate;
+            }
+        }
+        return filledStops;
+    };
+
     const handleSearch = async () => {
         const emptyStops = stops.filter(s => !s.location.trim());
         if (emptyStops.length > 0) {
             alert('Please fill in all locations');
             return;
         }
+
         setIsSearching(true);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setIsSearching(false);
+
+        try {
+            // 1. Auto-fill dates
+            const filledStops = autoFillDates(stops);
+            setStops(filledStops); // Show user the calculated dates
+
+            // 2. Simulate processing
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // 3. Create Itinerary
+            const result = await createMultiCityItinerary(filledStops);
+
+            if (result.success) {
+                // Redirect to planner/results
+                router.push(`/planner?created=${result.id}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Failed to plan trip. Please try again.');
+        } finally {
+            setIsSearching(false);
+        }
     };
 
     return (
