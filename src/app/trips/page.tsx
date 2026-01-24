@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useUser, useCollection } from '@/firebase';
+import { useUser } from '@/hooks/use-session';
 import RouteCard from '@/components/route-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -11,18 +11,44 @@ import VideoPlayerDialog from '@/components/video-player-dialog';
 
 export const maxDuration = 120; // Extend server action timeout for video generation
 
+interface SavedTrip extends Route {
+  id: string;
+  savedAt: Date;
+}
+
 export default function MyTripsPage() {
   const { user, status } = useUser();
+  const [trips, setTrips] = React.useState<SavedTrip[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const { data: trips, loading, error } = useCollection<Route>(
-    user ? `users/${user.uid}/trips` : '',
-    { orderBy: ['savedAt', 'desc'] }
-  );
-  
   const [videoState, setVideoState] = React.useState<{ route: Route | null; isOpen: boolean }>({
     route: null,
     isOpen: false,
   });
+
+  // Fetch trips when user is authenticated
+  React.useEffect(() => {
+    if (status === 'authenticated' && user) {
+      setLoading(true);
+      fetch('/api/trips')
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch trips');
+          return res.json();
+        })
+        .then(data => {
+          setTrips(data);
+          setError(null);
+        })
+        .catch(err => {
+          setError(err.message);
+          setTrips([]);
+        })
+        .finally(() => setLoading(false));
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+    }
+  }, [user, status]);
 
   const handleGenerateVideo = (route: Route) => {
     setVideoState({ route, isOpen: true });
@@ -32,8 +58,12 @@ export default function MyTripsPage() {
     setVideoState({ route: null, isOpen: false });
   }
 
+  const handleTripDeleted = (tripId: string) => {
+    setTrips(prev => prev.filter(t => t.id !== tripId));
+  };
 
-  if (status === 'loading' || status === 'loading-uninitialized') {
+
+  if (status === 'loading') {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-headline font-bold mb-6">My Trips</h1>
@@ -73,7 +103,7 @@ export default function MyTripsPage() {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-3xl font-headline font-bold mb-4">Error</h1>
-        <p className="text-destructive">{error.message}</p>
+        <p className="text-destructive">{error}</p>
       </div>
     );
   }
@@ -84,7 +114,13 @@ export default function MyTripsPage() {
       {trips && trips.length > 0 ? (
         <div className="space-y-4">
           {trips.map(trip => (
-            <RouteCard key={trip.id} route={trip} isSavedTrip onGenerateVideo={handleGenerateVideo} />
+            <RouteCard
+              key={trip.id}
+              route={trip}
+              isSavedTrip
+              onGenerateVideo={handleGenerateVideo}
+              onDeleted={() => handleTripDeleted(trip.id)}
+            />
           ))}
         </div>
       ) : (

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useUser, useCollection, useFirestore } from '@/firebase';
+import { useUser } from '@/hooks/use-session';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { deleteItinerary } from '@/firebase/firestore/itineraries';
 import { format } from 'date-fns';
 import type { SavedItinerary } from '@/lib/types';
 
@@ -32,19 +31,26 @@ import type { SavedItinerary } from '@/lib/types';
 function PlanCard({ plan, onDelete }: { plan: SavedItinerary; onDelete: (id: string) => void; }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
-  
-  const handleDelete = () => {
+  const { toast } = useToast();
+
+  const handleDelete = async () => {
     setIsDeleting(true);
-    onDelete(plan.id);
-    // The dialog will be closed by the parent component upon successful deletion and re-render.
-    // We can add a timeout to close it anyway if something goes wrong.
-    setTimeout(() => {
-        setIsDeleting(false);
-        setIsDeleteDialogOpen(false);
-    }, 3000);
+    try {
+      const response = await fetch(`/api/itineraries/${plan.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete');
+      onDelete(plan.id);
+      toast({ title: 'Plan Deleted', description: 'The itinerary has been removed.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Failed to delete plan' });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
   };
 
-  const savedDate = plan.savedAt instanceof Date ? plan.savedAt : new Date((plan.savedAt?.seconds ?? 0) * 1000);
+  const savedDate = plan.savedAt instanceof Date ? plan.savedAt : new Date(plan.savedAt);
 
   return (
     <>
@@ -110,26 +116,40 @@ function PlanCard({ plan, onDelete }: { plan: SavedItinerary; onDelete: (id: str
 
 export default function MyPlansPage() {
   const { user, status } = useUser();
-  const firestore = useFirestore();
   const { toast } = useToast();
+  const [plans, setPlans] = React.useState<SavedItinerary[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const { data: plans, loading, error } = useCollection<SavedItinerary>(
-    user ? `users/${user.uid}/itineraries` : '',
-    { orderBy: ['savedAt', 'desc'] }
-  );
+  // Fetch plans when user is authenticated
+  React.useEffect(() => {
+    if (status === 'authenticated' && user) {
+      setLoading(true);
+      fetch('/api/itineraries')
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch plans');
+          return res.json();
+        })
+        .then(data => {
+          setPlans(data);
+          setError(null);
+        })
+        .catch(err => {
+          setError(err.message);
+          setPlans([]);
+        })
+        .finally(() => setLoading(false));
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+    }
+  }, [user, status]);
 
   const handleDeletePlan = (id: string) => {
-    if (!user || !firestore) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Authentication error.' });
-      return;
-    }
-    // Call the firestore function which now handles its own errors
-    deleteItinerary(firestore, user.uid, id);
-    toast({ title: 'Plan Deleted', description: 'The itinerary has been removed.' });
+    setPlans(prev => prev.filter(p => p.id !== id));
   }
 
 
-  if (status === 'loading' || status === 'loading-uninitialized') {
+  if (status === 'loading') {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-headline font-bold mb-6">My Plans</h1>
@@ -152,7 +172,7 @@ export default function MyPlansPage() {
   }
 
   if (loading) {
-     return (
+    return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-headline font-bold mb-6">My Plans</h1>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -168,7 +188,7 @@ export default function MyPlansPage() {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-3xl font-headline font-bold mb-4">Error</h1>
-        <p className="text-destructive">{error.message}</p>
+        <p className="text-destructive">{error}</p>
       </div>
     );
   }

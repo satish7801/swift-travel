@@ -42,8 +42,5 @@ export interface SavedItinerary {
   totalDays: number;
   itinerary: GenerateItineraryOutput;
   overview?: GenerateItineraryOverviewOutput;
-  savedAt: {
-    seconds: number;
-    nanoseconds: number;
-  } | Date;
+  savedAt: Date | string;
 }

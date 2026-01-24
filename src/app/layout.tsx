@@ -4,10 +4,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
 import { SidebarNav } from '@/components/sidebar-nav';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { AuthProvider } from '@/components/auth-provider';
 import UserAuth from '@/components/user-auth';
 import { ThemeProvider } from '@/components/theme-provider';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
   title: 'SwiftTravel',
@@ -34,26 +33,24 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <FirebaseClientProvider>
-            <FirebaseErrorListener>
-              <SidebarProvider>
-                <Sidebar>
-                  <SidebarHeader>
-                    <Logo />
-                  </SidebarHeader>
-                  <SidebarContent>
-                    <SidebarNav />
-                  </SidebarContent>
-                  <SidebarFooter>
-                    <UserAuth />
-                  </SidebarFooter>
-                </Sidebar>
-                <SidebarInset>
-                  {children}
-                </SidebarInset>
-              </SidebarProvider>
-            </FirebaseErrorListener>
-          </FirebaseClientProvider>
+          <AuthProvider>
+            <SidebarProvider>
+              <Sidebar>
+                <SidebarHeader>
+                  <Logo />
+                </SidebarHeader>
+                <SidebarContent>
+                  <SidebarNav />
+                </SidebarContent>
+                <SidebarFooter>
+                  <UserAuth />
+                </SidebarFooter>
+              </Sidebar>
+              <SidebarInset>
+                {children}
+              </SidebarInset>
+            </SidebarProvider>
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>

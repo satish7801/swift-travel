@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useUser, useDoc } from '@/firebase';
+import { useUser } from '@/hooks/use-session';
 import type { SavedItinerary } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -42,7 +42,7 @@ function ItineraryOverviewDisplay({ overview, plan }: { overview: NonNullable<Sa
         }
         setIsGeneratingAudio(false);
     };
-    
+
     return (
         <Card>
             <CardHeader className="text-center p-6 relative">
@@ -186,16 +186,16 @@ function PlanSkeleton() {
                 <Skeleton className="h-16 w-full" />
             </div>
             <Skeleton className="h-px w-full" />
-             <Skeleton className="h-8 w-1/2 mx-auto" />
-             <div className="space-y-8">
+            <Skeleton className="h-8 w-1/2 mx-auto" />
+            <div className="space-y-8">
                 {[...Array(2)].map((_, i) => (
                     <div key={i} className="space-y-2">
                         <Skeleton className="h-8 w-3/4" />
                         <Skeleton className="h-24 w-full" />
-                         <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
                     </div>
                 ))}
-             </div>
+            </div>
         </div>
     )
 }
@@ -206,15 +206,37 @@ export default function SavedPlanPage() {
     const { user, status: authStatus } = useUser();
     const { toast } = useToast();
 
-    const { data: plan, loading, error } = useDoc<SavedItinerary>(
-        user && planId ? `users/${user.uid}/itineraries/${planId}` : ''
-    );
-    
+    const [plan, setPlan] = React.useState<SavedItinerary | null>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+
     // State for Share Dialog
     const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
     const [shareSummary, setShareSummary] = React.useState('');
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
     const [hasCopied, setHasCopied] = React.useState(false);
+
+    // Fetch plan when user is authenticated
+    React.useEffect(() => {
+        if (authStatus === 'authenticated' && user && planId) {
+            setLoading(true);
+            fetch(`/api/itineraries/${planId}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to fetch plan');
+                    return res.json();
+                })
+                .then(data => {
+                    setPlan(data);
+                    setError(null);
+                })
+                .catch(err => {
+                    setError(err.message);
+                })
+                .finally(() => setLoading(false));
+        } else if (authStatus === 'unauthenticated') {
+            setLoading(false);
+        }
+    }, [user, authStatus, planId]);
 
     const handleGenerateSummary = async () => {
         if (!plan) return;
@@ -228,7 +250,7 @@ export default function SavedPlanPage() {
         }
         setIsGeneratingSummary(false);
     }
-    
+
     const handleCopyToClipboard = () => {
         if (!shareSummary) return;
         navigator.clipboard.writeText(shareSummary);
@@ -268,7 +290,7 @@ export default function SavedPlanPage() {
     if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
         return (
             <div className="container mx-auto px-4 py-8 max-w-4xl">
-                 <div className="mb-6">
+                <div className="mb-6">
                     <Button variant="outline" asChild>
                         <Link href="/plans"><ArrowLeft className="mr-2 h-4 w-4" /> Back to My Plans</Link>
                     </Button>
@@ -277,13 +299,13 @@ export default function SavedPlanPage() {
             </div>
         );
     }
-    
+
     if (authStatus === 'unauthenticated') {
         return (
             <div className="container mx-auto px-4 py-8 text-center">
                 <h1 className="text-2xl font-headline font-bold mb-4">Access Denied</h1>
                 <p className="text-muted-foreground">You must be logged in to view this page.</p>
-                 <Button asChild className="mt-4">
+                <Button asChild className="mt-4">
                     <Link href="/plans">Back to My Plans</Link>
                 </Button>
             </div>
@@ -295,15 +317,15 @@ export default function SavedPlanPage() {
             <div className="container mx-auto px-4 py-8 text-center">
                 <h1 className="text-2xl font-headline font-bold mb-4">Error</h1>
                 <p className="text-destructive">Could not load the plan. It may have been deleted or there was a network issue.</p>
-                 <Button asChild className="mt-4">
+                <Button asChild className="mt-4">
                     <Link href="/plans">Back to My Plans</Link>
                 </Button>
             </div>
         );
     }
-    
+
     if (!plan) {
-         return (
+        return (
             <div className="container mx-auto px-4 py-8 text-center">
                 <h1 className="text-2xl font-headline font-bold mb-4">Plan Not Found</h1>
                 <p className="text-muted-foreground">The requested itinerary could not be found.</p>
@@ -320,8 +342,8 @@ export default function SavedPlanPage() {
                 <Button variant="outline" asChild>
                     <Link href="/plans"><ArrowLeft className="mr-2 h-4 w-4" /> Back to My Plans</Link>
                 </Button>
-                
-                 <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+
+                <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
                     <DialogTrigger asChild>
                         <Button>
                             <Share2 className="mr-2 h-4 w-4" /> Share
@@ -382,7 +404,7 @@ export default function SavedPlanPage() {
                     </DialogContent>
                 </Dialog>
             </div>
-            
+
             {plan.overview ? <ItineraryOverviewDisplay overview={plan.overview} plan={plan} /> : <BasicItineraryDisplay plan={plan} />}
         </div>
     );

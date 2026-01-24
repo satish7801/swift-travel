@@ -17,8 +17,7 @@ import { findAttractionsAction, generateItineraryAction } from './actions';
 import type { GenerateItineraryOutput as ItineraryData } from '@/ai/flows/generate-itinerary-flow';
 import type { GenerateItineraryOverviewOutput } from '@/ai/flows/generate-itinerary-overview-flow';
 import { Separator } from '@/components/ui/separator';
-import { useUser, useFirestore } from '@/firebase';
-import { saveItinerary } from '@/firebase/firestore/itineraries';
+import { useUser } from '@/hooks/use-session';
 
 
 const cityFormSchema = z.object({
@@ -30,8 +29,7 @@ type CityFormValues = z.infer<typeof cityFormSchema>;
 export default function PlannerPage() {
   const { toast } = useToast();
   const { user } = useUser();
-  const firestore = useFirestore();
-  
+
   const [attractions, setAttractions] = React.useState<string[]>([]);
   const [selectedAttractions, setSelectedAttractions] = React.useState<Set<string>>(new Set());
   const [itinerary, setItinerary] = React.useState<ItineraryData | null>(null);
@@ -86,35 +84,56 @@ export default function PlannerPage() {
       toast({ variant: 'destructive', title: 'No attractions selected', description: 'Please select at least one attraction to generate a plan.' });
       return;
     }
-    
+
     setIsGeneratingItinerary(true);
     setItinerary(null);
     setItineraryOverview(null);
     setSavedPlanId(null);
     setPlanJustSaved(false);
-    
+
     const result = await generateItineraryAction(currentCity, Array.from(selectedAttractions));
 
     if (result.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      toast({ variant: 'destructive', title: 'Error', description: result.error });
     } else if (result.itinerary && result.overview) {
-        setItinerary(result.itinerary);
-        setItineraryOverview(result.overview);
+      setItinerary(result.itinerary);
+      setItineraryOverview(result.overview);
     }
     setIsGeneratingItinerary(false);
   };
-  
-  const handleSavePlan = () => {
-    if (!user || !firestore || !itinerary || !currentCity) {
+
+  const handleSavePlan = async () => {
+    if (!user || !itinerary || !currentCity) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in and have an itinerary to save it.' });
       return;
     }
-    
+
     setIsSaving(true);
-    saveItinerary(firestore, user.uid, currentCity, itinerary, itineraryOverview);
-    setPlanJustSaved(true);
-    toast({ title: 'Plan Saved!', description: 'Your itinerary has been saved to "My Plans".' });
-    setIsSaving(false);
+    try {
+      const response = await fetch('/api/itineraries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city: currentCity,
+          title: itineraryOverview?.title || `Trip to ${currentCity}`,
+          summary: itineraryOverview?.introduction || 'A custom travel itinerary',
+          totalDays: itinerary.itinerary.length,
+          itinerary: itinerary,
+          overview: itineraryOverview,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save');
+
+      const { id } = await response.json();
+      setSavedPlanId(id);
+      setPlanJustSaved(true);
+      toast({ title: 'Plan Saved!', description: 'Your itinerary has been saved to "My Plans".' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Failed to save plan' });
+    } finally {
+      setIsSaving(false);
+    }
   }
 
 
@@ -160,10 +179,10 @@ export default function PlannerPage() {
         </Card>
 
         {isLoadingAttractions && (
-            <div className="text-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                <p className="mt-2 text-muted-foreground">Searching for popular attractions in {currentCity}...</p>
-            </div>
+          <div className="text-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="mt-2 text-muted-foreground">Searching for popular attractions in {currentCity}...</p>
+          </div>
         )}
 
         {attractions.length > 0 && (
@@ -190,129 +209,129 @@ export default function PlannerPage() {
                 ))}
               </div>
               <div className="mt-6 text-center">
-                  <Button size="lg" onClick={handleGenerateItinerary} disabled={isGeneratingItinerary || selectedAttractions.size === 0}>
-                      {isGeneratingItinerary ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                      <span className="ml-2">Generate My Travel Guide</span>
-                  </Button>
+                <Button size="lg" onClick={handleGenerateItinerary} disabled={isGeneratingItinerary || selectedAttractions.size === 0}>
+                  {isGeneratingItinerary ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                  <span className="ml-2">Generate My Travel Guide</span>
+                </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
         {isGeneratingItinerary && (
-            <div className="text-center py-8 mt-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                <p className="mt-2 text-muted-foreground">Crafting your travel guide...</p>
-            </div>
+          <div className="text-center py-8 mt-8">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="mt-2 text-muted-foreground">Crafting your travel guide...</p>
+          </div>
         )}
-        
+
         {itineraryOverview && (
-            <Card className="mt-8">
-                <CardHeader className="text-center p-6">
-                    <h2 className="text-4xl font-bold font-headline text-primary">{itineraryOverview.title}</h2>
-                    <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">{itineraryOverview.introduction}</p>
-                </CardHeader>
-                <CardContent className="p-6 space-y-8">
-                    {/* Quick Facts Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border rounded-lg p-4">
-                        <div className="flex items-start gap-4">
-                            <Wallet className="h-7 w-7 text-primary mt-1 shrink-0" />
-                            <div>
-                                <h4 className="font-semibold">Estimated Cost</h4>
-                                <p className="text-muted-foreground text-sm">{itineraryOverview.estimatedCost}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-4">
-                            <CalendarDays className="h-7 w-7 text-primary mt-1 shrink-0" />
-                            <div>
-                                <h4 className="font-semibold">Best Time to Visit</h4>
-                                <p className="text-muted-foreground text-sm">{itineraryOverview.bestTimeToVisit}</p>
-                            </div>
-                        </div>
-                    </div>
+          <Card className="mt-8">
+            <CardHeader className="text-center p-6">
+              <h2 className="text-4xl font-bold font-headline text-primary">{itineraryOverview.title}</h2>
+              <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">{itineraryOverview.introduction}</p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-8">
+              {/* Quick Facts Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border rounded-lg p-4">
+                <div className="flex items-start gap-4">
+                  <Wallet className="h-7 w-7 text-primary mt-1 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold">Estimated Cost</h4>
+                    <p className="text-muted-foreground text-sm">{itineraryOverview.estimatedCost}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <CalendarDays className="h-7 w-7 text-primary mt-1 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold">Best Time to Visit</h4>
+                    <p className="text-muted-foreground text-sm">{itineraryOverview.bestTimeToVisit}</p>
+                  </div>
+                </div>
+              </div>
 
-                    <Separator />
-                    
-                    {/* Daily Breakdown */}
-                    <h3 className="text-3xl font-bold font-headline text-center">Your Day-by-Day Itinerary</h3>
-                    <div className="space-y-8">
-                      {itineraryOverview.dailyBreakdown.map(day => (
-                          <div key={day.day} className="border-l-2 border-primary pl-6 relative">
-                              <div className="absolute -left-[11px] top-1 h-5 w-5 rounded-full bg-primary border-4 border-background" />
-                              <h4 className="text-2xl font-bold font-headline">Day {day.day}: {day.dayTitle}</h4>
-                              <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed mt-2">{day.narrative}</p>
-                              {day.proTip && (
-                                  <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                      <Lightbulb className="h-5 w-5 mt-0.5 shrink-0" />
-                                      <div>
-                                          <h5 className="font-semibold">Pro Tip</h5>
-                                          <p className="text-sm">{day.proTip}</p>
-                                      </div>
-                                  </div>
-                              )}
-                          </div>
-                      ))}
-                    </div>
+              <Separator />
 
-                    <Separator />
-
-                    {/* Additional Info Section */}
-                    <h3 className="text-3xl font-bold font-headline text-center">Practical Information</h3>
-                    <div className="grid md:grid-cols-2 gap-8 pt-4">
+              {/* Daily Breakdown */}
+              <h3 className="text-3xl font-bold font-headline text-center">Your Day-by-Day Itinerary</h3>
+              <div className="space-y-8">
+                {itineraryOverview.dailyBreakdown.map(day => (
+                  <div key={day.day} className="border-l-2 border-primary pl-6 relative">
+                    <div className="absolute -left-[11px] top-1 h-5 w-5 rounded-full bg-primary border-4 border-background" />
+                    <h4 className="text-2xl font-bold font-headline">Day {day.day}: {day.dayTitle}</h4>
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed mt-2">{day.narrative}</p>
+                    {day.proTip && (
+                      <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                        <Lightbulb className="h-5 w-5 mt-0.5 shrink-0" />
                         <div>
-                            <h4 className="text-xl font-bold font-headline mb-3 flex items-center gap-3"><Car className="h-6 w-6 text-primary" /> Getting Around</h4>
-                            <p className="text-muted-foreground leading-relaxed">{itineraryOverview.gettingAround}</p>
+                          <h5 className="font-semibold">Pro Tip</h5>
+                          <p className="text-sm">{day.proTip}</p>
                         </div>
-                        <div>
-                            <h4 className="text-xl font-bold font-headline mb-3 flex items-center gap-3"><ShoppingBag className="h-6 w-6 text-primary" /> What to Pack</h4>
-                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                                {itineraryOverview.whatToPack.map((item, index) => (
-                                    <li key={index}>{item}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    {/* Conclusion & Videos */}
-                    <div className="text-center">
-                        <h3 className="text-2xl font-bold font-headline mb-2">An Unforgettable Journey</h3>
-                        <p className="text-muted-foreground max-w-2xl mx-auto">{itineraryOverview.conclusion}</p>
-                    </div>
-                    {itineraryOverview.suggestedVideos && itineraryOverview.suggestedVideos.length > 0 && (
-                        <div className="text-center pt-4">
-                            <h3 className="text-2xl font-bold font-headline mb-4">Visualize Your Trip</h3>
-                            <p className="text-muted-foreground mb-4">Watch travel vlogs to get a feel for your destination:</p>
-                            <div className="flex flex-wrap justify-center gap-4">
-                                {itineraryOverview.suggestedVideos.map((videoQuery, index) => (
-                                    <Button key={index} asChild variant="outline">
-                                        <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(videoQuery)}`} target="_blank" rel="noopener noreferrer">
-                                            <Youtube className="mr-2 h-4 w-4" />
-                                            {videoQuery}
-                                        </a>
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
+                      </div>
                     )}
-                </CardContent>
-                <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
-                  {savedPlanId || planJustSaved ? (
-                      <Button size="lg" variant="outline" asChild>
-                        <Link href="/plans">
-                          <CheckCircle />
-                          <span className="ml-2">View Saved Plans</span>
-                        </Link>
+                  </div>
+                ))}
+              </div>
+
+              <Separator />
+
+              {/* Additional Info Section */}
+              <h3 className="text-3xl font-bold font-headline text-center">Practical Information</h3>
+              <div className="grid md:grid-cols-2 gap-8 pt-4">
+                <div>
+                  <h4 className="text-xl font-bold font-headline mb-3 flex items-center gap-3"><Car className="h-6 w-6 text-primary" /> Getting Around</h4>
+                  <p className="text-muted-foreground leading-relaxed">{itineraryOverview.gettingAround}</p>
+                </div>
+                <div>
+                  <h4 className="text-xl font-bold font-headline mb-3 flex items-center gap-3"><ShoppingBag className="h-6 w-6 text-primary" /> What to Pack</h4>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    {itineraryOverview.whatToPack.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Conclusion & Videos */}
+              <div className="text-center">
+                <h3 className="text-2xl font-bold font-headline mb-2">An Unforgettable Journey</h3>
+                <p className="text-muted-foreground max-w-2xl mx-auto">{itineraryOverview.conclusion}</p>
+              </div>
+              {itineraryOverview.suggestedVideos && itineraryOverview.suggestedVideos.length > 0 && (
+                <div className="text-center pt-4">
+                  <h3 className="text-2xl font-bold font-headline mb-4">Visualize Your Trip</h3>
+                  <p className="text-muted-foreground mb-4">Watch travel vlogs to get a feel for your destination:</p>
+                  <div className="flex flex-wrap justify-center gap-4">
+                    {itineraryOverview.suggestedVideos.map((videoQuery, index) => (
+                      <Button key={index} asChild variant="outline">
+                        <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(videoQuery)}`} target="_blank" rel="noopener noreferrer">
+                          <Youtube className="mr-2 h-4 w-4" />
+                          {videoQuery}
+                        </a>
                       </Button>
-                    ) : (
-                      <Button size="lg" onClick={handleSavePlan} disabled={!user || isSaving}>
-                        {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-                        <span className="ml-2">Save Plan</span>
-                      </Button>
-                    )}
-                </CardFooter>
-            </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
+              {savedPlanId || planJustSaved ? (
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/plans">
+                    <CheckCircle />
+                    <span className="ml-2">View Saved Plans</span>
+                  </Link>
+                </Button>
+              ) : (
+                <Button size="lg" onClick={handleSavePlan} disabled={!user || isSaving}>
+                  {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                  <span className="ml-2">Save Plan</span>
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
         )}
 
       </div>

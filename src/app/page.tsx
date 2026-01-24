@@ -16,7 +16,7 @@ import ChatWidget from '@/components/chat-widget';
 import SuggestedRoutes from '@/components/suggested-routes';
 import FilterControls from '@/components/filter-controls';
 import ResultsChart from '@/components/results-chart';
-import { useDoc, useUser } from '@/firebase';
+import { useUser } from '@/hooks/use-session';
 
 export type SortKey = 'default' | 'price' | 'duration' | 'transfers' | 'carbon';
 
@@ -28,9 +28,19 @@ export default function Home() {
   const { toast } = useToast();
 
   const { user } = useUser();
-  const { data: userProfile } = useDoc<UserProfile>(
-    user ? `users/${user.uid}` : ''
-  );
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+
+  // Fetch user profile when user is authenticated
+  React.useEffect(() => {
+    if (user) {
+      fetch('/api/user/profile')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => setUserProfile(data))
+        .catch(() => setUserProfile(null));
+    } else {
+      setUserProfile(null);
+    }
+  }, [user]);
 
   const [transportModes, setTransportModes] = React.useState<Set<TransportMode>>(new Set(['flight', 'train', 'bus']));
   const [maxPrice, setMaxPrice] = React.useState<number | undefined>(undefined);
@@ -49,7 +59,7 @@ export default function Home() {
   React.useEffect(() => {
     form.setValue('date', new Date());
   }, [form]);
-  
+
   const priceBounds = React.useMemo((): [number, number] => {
     if (!searchResults) return [0, 100000];
     const prices = searchResults.map(r => r.price);
@@ -93,21 +103,21 @@ export default function Home() {
       setIsSearching(false);
     }
   };
-  
+
   const handleDestinationClick = (destination: string) => {
     form.setValue('to', destination);
     document.querySelector('.relative.z-10')?.scrollIntoView({ behavior: 'smooth' });
   };
-  
+
   const handleTransportModeChange = (mode: TransportMode, checked: boolean) => {
     setTransportModes(prev => {
-        const newModes = new Set(prev);
-        if (checked) {
-            newModes.add(mode);
-        } else {
-            newModes.delete(mode);
-        }
-        return newModes;
+      const newModes = new Set(prev);
+      if (checked) {
+        newModes.add(mode);
+      } else {
+        newModes.delete(mode);
+      }
+      return newModes;
     });
   };
 
@@ -128,9 +138,9 @@ export default function Home() {
       if (numStops !== -1) {
         const stops = route.legs.length - 1;
         if (numStops === 2) { // 2+ stops
-            if (stops < 2) return false;
+          if (stops < 2) return false;
         } else { // Direct or 1 stop
-            if (stops !== numStops) return false;
+          if (stops !== numStops) return false;
         }
       }
 
@@ -187,20 +197,20 @@ export default function Home() {
       <div className="container mx-auto px-4 -mt-24 relative z-10">
         <SearchForm form={form} onSearch={handleSearch} isSearching={isSearching} />
       </div>
-      
+
       <div className="container mx-auto px-4 mt-8 pb-8">
         <div className="space-y-8">
           <SuggestedRoutes onDestinationClick={handleDestinationClick} />
-          
+
           {searchResults && searchResults.length > 0 && maxPrice !== undefined && (
             <FilterControls
-                transportModes={transportModes}
-                onTransportModeChange={handleTransportModeChange}
-                priceBounds={priceBounds}
-                maxPrice={maxPrice}
-                onMaxPriceChange={setMaxPrice}
-                numStops={numStops}
-                onNumStopsChange={setNumStops}
+              transportModes={transportModes}
+              onTransportModeChange={handleTransportModeChange}
+              priceBounds={priceBounds}
+              maxPrice={maxPrice}
+              onMaxPriceChange={setMaxPrice}
+              numStops={numStops}
+              onNumStopsChange={setNumStops}
             />
           )}
 

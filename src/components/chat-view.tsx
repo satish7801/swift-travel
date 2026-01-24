@@ -12,8 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Route } from '@/lib/types';
-import { useUser, useFirestore } from '@/firebase';
-import { saveTrip } from '@/firebase/firestore/trips';
+import { useUser } from '@/hooks/use-session';
 
 const initialState: ChatState = {
   messages: [
@@ -46,7 +45,6 @@ export default function ChatView({ results }: { results: Route[] | null }) {
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useUser();
-  const firestore = useFirestore();
 
   React.useEffect(() => {
     const lastMessage = state.messages[state.messages.length - 1];
@@ -59,37 +57,49 @@ export default function ChatView({ results }: { results: Route[] | null }) {
     }
 
     if (lastMessage?.role === 'assistant' && lastMessage.bookingDetails) {
-        const { routeId, confirmationMessage } = lastMessage.bookingDetails;
+      const { routeId, confirmationMessage } = lastMessage.bookingDetails;
 
-        if (!user || !firestore) {
-            toast({ variant: 'destructive', title: 'Please log in to save a trip.' });
-            return;
-        }
+      if (!user) {
+        toast({ variant: 'destructive', title: 'Please log in to save a trip.' });
+        return;
+      }
 
-        const routeToSave = results?.find(r => r.id === routeId);
+      const routeToSave = results?.find(r => r.id === routeId);
 
-        if (routeToSave) {
-            saveTrip(firestore, user.uid, routeToSave);
+      if (routeToSave) {
+        // Save trip via API
+        fetch('/api/trips', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(routeToSave),
+        }).then(response => {
+          if (response.ok) {
             toast({ title: 'Trip Saved!', description: confirmationMessage });
-        } else {
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not find the selected route to save.' });
-        }
+          } else {
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the trip.' });
+          }
+        }).catch(() => {
+          toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the trip.' });
+        });
+      } else {
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not find the selected route to save.' });
+      }
     }
-  }, [state.messages, toast, user, firestore, results]);
+  }, [state.messages, toast, user, results]);
 
   React.useEffect(() => {
     if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTo({
-            top: scrollAreaRef.current.scrollHeight,
-            behavior: 'smooth',
-        });
+      scrollAreaRef.current.scrollTo({
+        top: scrollAreaRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
     }
   }, [state.messages]);
 
   const handleSuggestionClick = (suggestion: string) => {
     if (textAreaRef.current && formRef.current) {
-        textAreaRef.current.value = suggestion;
-        formRef.current.requestSubmit();
+      textAreaRef.current.value = suggestion;
+      formRef.current.requestSubmit();
     }
   };
 
@@ -108,12 +118,12 @@ export default function ChatView({ results }: { results: Route[] | null }) {
               >
                 {message.role === 'assistant' && (
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback><Bot className="h-5 w-5"/></AvatarFallback>
+                    <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
                   </Avatar>
                 )}
-                 {message.role === 'error' && (
+                {message.role === 'error' && (
                   <Avatar className="h-8 w-8 bg-destructive text-destructive-foreground">
-                    <AvatarFallback><AlertCircle className="h-5 w-5"/></AvatarFallback>
+                    <AvatarFallback><AlertCircle className="h-5 w-5" /></AvatarFallback>
                   </Avatar>
                 )}
 
@@ -131,7 +141,7 @@ export default function ChatView({ results }: { results: Route[] | null }) {
 
                 {message.role === 'user' && (
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback><User className="h-5 w-5"/></AvatarFallback>
+                    <AvatarFallback><User className="h-5 w-5" /></AvatarFallback>
                   </Avatar>
                 )}
               </div>
@@ -148,8 +158,8 @@ export default function ChatView({ results }: { results: Route[] | null }) {
 
               {message.role === 'assistant' && message.displayData?.image && (
                 <div className="pl-11 mt-2">
-                  <Image 
-                    src={message.displayData.image} 
+                  <Image
+                    src={message.displayData.image}
                     alt="Location image"
                     width={300}
                     height={200}

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useUser, useDoc, useFirestore } from "@/firebase";
+import { useUser } from "@/hooks/use-session";
 import type { UserProfile } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { updateUserDisplayName, updateUserPreferences } from "@/firebase/firestore/users";
 import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
@@ -36,22 +35,42 @@ const modeOptions = [
 ];
 
 const budgetOptions = [
-    { value: 'any', label: 'Any' },
-    { value: 'budget', label: 'Budget' },
-    { value: 'mid-range', label: 'Mid-Range' },
-    { value: 'luxury', label: 'Luxury' },
+  { value: 'any', label: 'Any' },
+  { value: 'budget', label: 'Budget' },
+  { value: 'mid-range', label: 'Mid-Range' },
+  { value: 'luxury', label: 'Luxury' },
 ];
 
 export default function ProfilePage() {
   const { user, status } = useUser();
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isSubmittingPrefs, setIsSubmittingPrefs] = React.useState(false);
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = React.useState(true);
+  const [profileError, setProfileError] = React.useState<string | null>(null);
 
-  const { data: userProfile, loading: profileLoading, error: profileError } = useDoc<UserProfile>(
-    user ? `users/${user.uid}` : ''
-  );
+  // Fetch user profile
+  React.useEffect(() => {
+    if (status === 'authenticated' && user) {
+      setProfileLoading(true);
+      fetch('/api/user/profile')
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch profile');
+          return res.json();
+        })
+        .then(data => {
+          setUserProfile(data);
+          setProfileError(null);
+        })
+        .catch(err => {
+          setProfileError(err.message);
+        })
+        .finally(() => setProfileLoading(false));
+    } else if (status === 'unauthenticated') {
+      setProfileLoading(false);
+    }
+  }, [user, status]);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -82,49 +101,61 @@ export default function ProfilePage() {
     }
   }, [userProfile, form, preferencesForm]);
 
-  const onSubmit = (data: ProfileFormValues) => {
-    if (!user || !firestore) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "You must be logged in to update your profile.",
-        });
-        return;
+  const onSubmit = async (data: ProfileFormValues) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to update your profile.",
+      });
+      return;
     }
-    
+
     setIsSubmitting(true);
     try {
-      updateUserDisplayName(firestore, user.uid, data.displayName);
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: data.displayName }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update');
+
       toast({
         title: "Profile Updated",
         description: "Your display name has been successfully updated.",
       });
     } catch (error: any) {
-      // This catch is for synchronous errors, like validation.
-      // Firestore errors are handled globally.
       toast({
         variant: "destructive",
         title: "Update Failed",
         description: error.message || "An unknown error occurred.",
       });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const onPreferencesSubmit = (data: PreferencesFormValues) => {
-    if (!user || !firestore) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "You must be logged in to update your preferences.",
-        });
-        return;
+  const onPreferencesSubmit = async (data: PreferencesFormValues) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to update your preferences.",
+      });
+      return;
     }
-    
+
     setIsSubmittingPrefs(true);
     try {
-      updateUserPreferences(firestore, user.uid, data);
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ travelPreferences: data }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update');
+
       toast({
         title: "Preferences Saved",
         description: "Your travel preferences have been updated.",
@@ -136,7 +167,7 @@ export default function ProfilePage() {
         description: error.message || "An unknown error occurred.",
       });
     } finally {
-        setIsSubmittingPrefs(false);
+      setIsSubmittingPrefs(false);
     }
   }
 
@@ -155,7 +186,7 @@ export default function ProfilePage() {
               <Skeleton className="h-10 w-24" />
             </CardContent>
           </Card>
-           <Card>
+          <Card>
             <CardHeader>
               <Skeleton className="h-8 w-48" />
               <Skeleton className="h-4 w-64" />
@@ -181,10 +212,10 @@ export default function ProfilePage() {
 
   if (profileError) {
     return (
-        <div className="container mx-auto px-4 py-8 text-center">
-            <h1 className="text-3xl font-headline font-bold mb-4">Error</h1>
-            <p className="text-destructive">Could not load your profile. Please try again later.</p>
-        </div>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-3xl font-headline font-bold mb-4">Error</h1>
+        <p className="text-destructive">Could not load your profile. Please try again later.</p>
+      </div>
     )
   }
 
@@ -193,16 +224,16 @@ export default function ProfilePage() {
       <h1 className="text-3xl font-headline font-bold mb-6">My Profile</h1>
       <div className="max-w-2xl space-y-8">
         <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-                {userProfile?.photoURL && <AvatarImage src={userProfile.photoURL} alt={userProfile?.displayName || 'User'} />}
-                <AvatarFallback className="text-3xl">
-                    {userProfile?.displayName ? userProfile.displayName[0].toUpperCase() : 'U'}
-                </AvatarFallback>
-            </Avatar>
-            <div>
-                <h2 className="text-2xl font-bold">{userProfile?.displayName}</h2>
-                <p className="text-muted-foreground">{userProfile?.email}</p>
-            </div>
+          <Avatar className="h-20 w-20">
+            {user?.image && <AvatarImage src={user.image} alt={user?.name || 'User'} />}
+            <AvatarFallback className="text-3xl">
+              {user?.name ? user.name[0].toUpperCase() : 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h2 className="text-2xl font-bold">{userProfile?.displayName || user?.name}</h2>
+            <p className="text-muted-foreground">{user?.email}</p>
+          </div>
         </div>
 
         <Card>
@@ -257,10 +288,10 @@ export default function ProfilePage() {
                         >
                           {modeOptions.map(option => (
                             <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                    <RadioGroupItem value={option.value} />
-                                </FormControl>
-                                <FormLabel className="font-normal cursor-pointer">{option.label}</FormLabel>
+                              <FormControl>
+                                <RadioGroupItem value={option.value} />
+                              </FormControl>
+                              <FormLabel className="font-normal cursor-pointer">{option.label}</FormLabel>
                             </FormItem>
                           ))}
                         </RadioGroup>
@@ -269,7 +300,7 @@ export default function ProfilePage() {
                     </FormItem>
                   )}
                 />
-                 <FormField
+                <FormField
                   control={preferencesForm.control}
                   name="budgetLevel"
                   render={({ field }) => (
@@ -283,10 +314,10 @@ export default function ProfilePage() {
                         >
                           {budgetOptions.map(option => (
                             <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                    <RadioGroupItem value={option.value} />
-                                </FormControl>
-                                <FormLabel className="font-normal cursor-pointer">{option.label}</FormLabel>
+                              <FormControl>
+                                <RadioGroupItem value={option.value} />
+                              </FormControl>
+                              <FormLabel className="font-normal cursor-pointer">{option.label}</FormLabel>
                             </FormItem>
                           ))}
                         </RadioGroup>
