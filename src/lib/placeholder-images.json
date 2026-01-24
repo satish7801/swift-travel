@@ -3,32 +3,74 @@
     {
       "id": "hero-plane",
       "description": "View from an airplane window looking at the wing over clouds",
-      "imageUrl": "https://images.unsplash.com/photo-1575637774236-3a4b04deae94?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwbGFuZSUyMHdpbmd8ZW58MHx8fHwxNzY5MTcxNDc4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "plane wing"
+      "imageUrl": "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&h=600&fit=crop",
+      "imageHint": "plane wing clouds"
     },
     {
       "id": "destination-goa",
       "description": "A beautiful beach in Goa, India",
-      "imageUrl": "https://images.unsplash.com/photo-1594225095383-8e9de38b4f2c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxnb2ElMjBiZWFjaHxlbnwwfHx8fDE3MjEwNjY3MDh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400&h=300&fit=crop",
       "imageHint": "goa beach"
     },
     {
       "id": "destination-jaipur",
       "description": "Hawa Mahal in Jaipur, India",
-      "imageUrl": "https://images.unsplash.com/photo-1617592355099-7c58066f4433?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxKYWlwdXJ8ZW58MHx8fHwxNzIxMDY2NzM5fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "jaipur city"
+      "imageUrl": "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=400&h=300&fit=crop",
+      "imageHint": "jaipur palace"
     },
     {
       "id": "destination-mumbai",
       "description": "The Gateway of India in Mumbai",
-      "imageUrl": "https://images.unsplash.com/photo-1562979314-1ace6d451296?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtdW1iYWl8ZW58MHx8fHwxNzIxMDY2ODg5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=400&h=300&fit=crop",
       "imageHint": "mumbai gateway"
     },
     {
       "id": "destination-delhi",
-      "description": "Humayun's Tomb in Delhi, India",
-      "imageUrl": "https://images.unsplash.com/photo-1585994247943-261f8858d205?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkZWxoaXxlbnwwfHx8fDE3MjEwNjY5MjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "delhi tomb"
+      "description": "India Gate in Delhi",
+      "imageUrl": "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=400&h=300&fit=crop",
+      "imageHint": "delhi india gate"
+    },
+    {
+      "id": "destination-kerala",
+      "description": "Kerala backwaters",
+      "imageUrl": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=400&h=300&fit=crop",
+      "imageHint": "kerala backwaters"
+    },
+    {
+      "id": "destination-agra",
+      "description": "Taj Mahal in Agra",
+      "imageUrl": "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&h=300&fit=crop",
+      "imageHint": "taj mahal"
+    },
+    {
+      "id": "destination-varanasi",
+      "description": "Ghats of Varanasi",
+      "imageUrl": "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?w=400&h=300&fit=crop",
+      "imageHint": "varanasi ghats"
+    },
+    {
+      "id": "destination-bangalore",
+      "description": "Bangalore city skyline",
+      "imageUrl": "https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=400&h=300&fit=crop",
+      "imageHint": "bangalore city"
+    },
+    {
+      "id": "destination-chennai",
+      "description": "Marina Beach Chennai",
+      "imageUrl": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=400&h=300&fit=crop",
+      "imageHint": "chennai beach"
+    },
+    {
+      "id": "destination-hyderabad",
+      "description": "Charminar Hyderabad",
+      "imageUrl": "https://images.unsplash.com/photo-1603467047557-a98addd1ba4d?w=400&h=300&fit=crop",
+      "imageHint": "hyderabad charminar"
+    },
+    {
+      "id": "destination-kolkata",
+      "description": "Victoria Memorial Kolkata",
+      "imageUrl": "https://images.unsplash.com/photo-1558431382-27e303142255?w=400&h=300&fit=crop",
+      "imageHint": "kolkata victoria"
     }
   ]
 }

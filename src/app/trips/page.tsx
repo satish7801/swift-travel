@@ -1,142 +1,130 @@
 "use client";
 
 import * as React from 'react';
-import Link from 'next/link';
-import { useUser } from '@/hooks/use-session';
+import { Briefcase, Trash2, Loader2, Plane, Train, Bus, ArrowRight, MapPin } from 'lucide-react';
 import RouteCard from '@/components/route-card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import type { Route } from '@/lib/types';
-import VideoPlayerDialog from '@/components/video-player-dialog';
+import type { Route, SavedTrip } from '@/lib/types';
+import { useUser } from '@/hooks/use-session';
+import { useToast } from '@/hooks/use-toast';
+import { AuthGuard } from '@/components/auth-guard';
 
-export const maxDuration = 120; // Extend server action timeout for video generation
-
-interface SavedTrip extends Route {
-  id: string;
-  savedAt: Date;
+export default function TripsPage() {
+  return (
+    <AuthGuard>
+      <TripsContent />
+    </AuthGuard>
+  );
 }
 
-export default function MyTripsPage() {
-  const { user, status } = useUser();
+function TripsContent() {
+  const { user } = useUser();
+
   const [trips, setTrips] = React.useState<SavedTrip[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const { toast } = useToast();
 
-  const [videoState, setVideoState] = React.useState<{ route: Route | null; isOpen: boolean }>({
-    route: null,
-    isOpen: false,
-  });
-
-  // Fetch trips when user is authenticated
   React.useEffect(() => {
-    if (status === 'authenticated' && user) {
-      setLoading(true);
-      fetch('/api/trips')
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch trips');
-          return res.json();
-        })
-        .then(data => {
+    const fetchTrips = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch('/api/trips');
+        if (response.ok) {
+          const data = await response.json();
           setTrips(data);
-          setError(null);
-        })
-        .catch(err => {
-          setError(err.message);
-          setTrips([]);
-        })
-        .finally(() => setLoading(false));
-    } else if (status === 'unauthenticated') {
-      setLoading(false);
-    }
-  }, [user, status]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch trips:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleGenerateVideo = (route: Route) => {
-    setVideoState({ route, isOpen: true });
+    fetchTrips();
+  }, [user]);
+
+  const handleDeleteTrip = (deletedId: string) => {
+    setTrips(prev => prev.filter(t => t.id !== deletedId));
   };
-
-  const handleCloseVideoDialog = () => {
-    setVideoState({ route: null, isOpen: false });
-  }
-
-  const handleTripDeleted = (tripId: string) => {
-    setTrips(prev => prev.filter(t => t.id !== tripId));
-  };
-
-
-  if (status === 'loading') {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-headline font-bold mb-6">My Trips</h1>
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full rounded-lg" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (status === 'unauthenticated' || !user) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-headline font-bold mb-4">My Trips</h1>
-        <p className="text-muted-foreground mb-4">You need to be logged in to view your saved trips.</p>
-        {/* The login button is in the sidebar, so we just prompt them. */}
-      </div>
-    );
-  }
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-headline font-bold mb-6">My Trips</h1>
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full rounded-lg" />
-          ))}
+      <main className="flex-1">
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <p className="text-muted-foreground">Loading your trips...</p>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
-  if (error) {
+  if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-headline font-bold mb-4">Error</h1>
-        <p className="text-destructive">{error}</p>
-      </div>
+      <main className="flex-1">
+        <div className="min-h-[60vh] flex items-center justify-center p-4">
+          <div className="text-center space-y-6 max-w-md">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Briefcase className="h-10 w-10 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">Sign in to view trips</h1>
+            <p className="text-muted-foreground">
+              Save your favorite routes and access them from anywhere.
+            </p>
+          </div>
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-headline font-bold mb-6">My Trips</h1>
-      {trips && trips.length > 0 ? (
-        <div className="space-y-4">
-          {trips.map(trip => (
-            <RouteCard
-              key={trip.id}
-              route={trip}
-              isSavedTrip
-              onGenerateVideo={handleGenerateVideo}
-              onDeleted={() => handleTripDeleted(trip.id)}
-            />
-          ))}
+    <main className="flex-1">
+      {/* Header */}
+      <section className="relative py-12 md:py-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+        <div className="container mx-auto px-4 relative">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Briefcase className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold">My Trips</h1>
+              <p className="text-muted-foreground">{trips.length} saved routes</p>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="text-center py-16">
-          <h2 className="text-2xl font-headline font-semibold">No trips saved yet</h2>
-          <p className="text-muted-foreground mt-2">Start searching for routes and book your next adventure!</p>
-          <Button asChild className="mt-4">
-            <Link href="/">Search Routes</Link>
-          </Button>
-        </div>
-      )}
-      <VideoPlayerDialog
-        route={videoState.route}
-        isOpen={videoState.isOpen}
-        onClose={handleCloseVideoDialog}
-      />
-    </div>
+      </section>
+
+      {/* Content */}
+      <section className="container mx-auto px-4 pb-12">
+        {trips.length === 0 ? (
+          <div className="text-center py-16 space-y-6">
+            <div className="w-24 h-24 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
+              <MapPin className="h-12 w-12 text-muted-foreground/50" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold">No trips saved yet</h2>
+              <p className="text-muted-foreground mt-2">
+                Search for routes and save your favorites here
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {trips.map((trip) => (
+              <RouteCard
+                key={trip.id}
+                route={trip as Route & { id: string }}
+                isSavedTrip
+                onDeleted={() => handleDeleteTrip(trip.id)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

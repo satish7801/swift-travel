@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowRight, Bus, Leaf, Loader2, MoreHorizontal, MoreVertical, Plane, TrainFront, Trash2, Film } from 'lucide-react';
+import { ArrowRight, Bus, Leaf, Loader2, MoreHorizontal, MoreVertical, Plane, TrainFront, Trash2, Film, Car } from 'lucide-react';
 import type { Route, TransportMode } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ const transportIcons: Record<TransportMode, React.ReactNode> = {
   flight: <Plane className="h-5 w-5" />,
   train: <TrainFront className="h-5 w-5" />,
   bus: <Bus className="h-5 w-5" />,
+  car: <Car className="h-5 w-5" />,
 };
 
 const getAvailabilityVariant = (availability: Route['availability']): VariantProps<typeof badgeVariants>['variant'] => {

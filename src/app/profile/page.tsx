@@ -1,340 +1,239 @@
 "use client";
 
-import * as React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useUser } from "@/hooks/use-session";
-import type { UserProfile } from "@/lib/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-
-const profileFormSchema = z.object({
-  displayName: z.string().min(2, { message: "Display name must be at least 2 characters." }).max(50, { message: "Display name cannot exceed 50 characters." }),
-});
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
-
-const preferencesFormSchema = z.object({
-  preferredMode: z.enum(['flight', 'train', 'bus', 'any']),
-  budgetLevel: z.enum(['budget', 'mid-range', 'luxury', 'any']),
-});
-type PreferencesFormValues = z.infer<typeof preferencesFormSchema>;
-
-const modeOptions = [
-  { value: 'any', label: 'Any' },
-  { value: 'flight', label: 'Flight' },
-  { value: 'train', label: 'Train' },
-  { value: 'bus', label: 'Bus' },
-];
-
-const budgetOptions = [
-  { value: 'any', label: 'Any' },
-  { value: 'budget', label: 'Budget' },
-  { value: 'mid-range', label: 'Mid-Range' },
-  { value: 'luxury', label: 'Luxury' },
-];
+import * as React from 'react';
+import { User, Mail, Camera, Loader2, Plane, Train, Bus, Save } from 'lucide-react';
+import { useUser } from '@/hooks/use-session';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import type { UserProfile } from '@/lib/types';
+import { AuthGuard } from '@/components/auth-guard';
 
 export default function ProfilePage() {
-  const { user, status } = useUser();
+  return (
+    <AuthGuard>
+      <ProfileContent />
+    </AuthGuard>
+  );
+}
+
+function ProfileContent() {
+  const { user } = useUser();
+  const [profile, setProfile] = React.useState<UserProfile | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isSubmittingPrefs, setIsSubmittingPrefs] = React.useState(false);
-  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
-  const [profileLoading, setProfileLoading] = React.useState(true);
-  const [profileError, setProfileError] = React.useState<string | null>(null);
 
-  // Fetch user profile
-  React.useEffect(() => {
-    if (status === 'authenticated' && user) {
-      setProfileLoading(true);
-      fetch('/api/user/profile')
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch profile');
-          return res.json();
-        })
-        .then(data => {
-          setUserProfile(data);
-          setProfileError(null);
-        })
-        .catch(err => {
-          setProfileError(err.message);
-        })
-        .finally(() => setProfileLoading(false));
-    } else if (status === 'unauthenticated') {
-      setProfileLoading(false);
-    }
-  }, [user, status]);
-
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      displayName: "",
-    },
-  });
-
-  const preferencesForm = useForm<PreferencesFormValues>({
-    resolver: zodResolver(preferencesFormSchema),
-    defaultValues: {
-      preferredMode: 'any',
-      budgetLevel: 'any',
-    }
-  });
+  const [displayName, setDisplayName] = React.useState('');
+  const [preferredMode, setPreferredMode] = React.useState<'flight' | 'train' | 'bus' | 'any'>('any');
+  const [budgetLevel, setBudgetLevel] = React.useState<'budget' | 'mid-range' | 'luxury' | 'any'>('any');
 
   React.useEffect(() => {
-    if (userProfile) {
-      if (userProfile.displayName) {
-        form.reset({ displayName: userProfile.displayName });
+    const fetchProfile = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
       }
-      if (userProfile.travelPreferences) {
-        preferencesForm.reset({
-          preferredMode: userProfile.travelPreferences.preferredMode || 'any',
-          budgetLevel: userProfile.travelPreferences.budgetLevel || 'any',
-        });
+      try {
+        const response = await fetch('/api/user/profile');
+        if (response.ok) {
+          const data = await response.json();
+          setProfile(data);
+          setDisplayName(data.displayName || '');
+          setPreferredMode(data.travelPreferences?.preferredMode || 'any');
+          setBudgetLevel(data.travelPreferences?.budgetLevel || 'any');
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [userProfile, form, preferencesForm]);
+    };
 
-  const onSubmit = async (data: ProfileFormValues) => {
-    if (!user) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "You must be logged in to update your profile.",
-      });
-      return;
-    }
+    fetchProfile();
+  }, [user]);
 
-    setIsSubmitting(true);
+  const handleSave = async () => {
+    setSaving(true);
     try {
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName: data.displayName }),
+        body: JSON.stringify({
+          displayName,
+          travelPreferences: { preferredMode, budgetLevel },
+        }),
       });
 
-      if (!response.ok) throw new Error('Failed to update');
-
-      toast({
-        title: "Profile Updated",
-        description: "Your display name has been successfully updated.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "An unknown error occurred.",
-      });
+      if (response.ok) {
+        toast({ title: 'Profile updated!' });
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Failed to save profile' });
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const onPreferencesSubmit = async (data: PreferencesFormValues) => {
-    if (!user) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "You must be logged in to update your preferences.",
-      });
-      return;
-    }
-
-    setIsSubmittingPrefs(true);
-    try {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ travelPreferences: data }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update');
-
-      toast({
-        title: "Preferences Saved",
-        description: "Your travel preferences have been updated.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "An unknown error occurred.",
-      });
-    } finally {
-      setIsSubmittingPrefs(false);
-    }
-  }
-
-  if (status === 'loading' || (status === 'authenticated' && profileLoading)) {
+  if (authLoading || loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-headline font-bold mb-6">My Profile</h1>
-        <div className="space-y-8 max-w-2xl">
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-64" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-24" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-64" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-24" />
-            </CardContent>
-          </Card>
+      <main className="flex-1">
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
-      </div>
+      </main>
     );
   }
 
-  if (status === 'unauthenticated' || !user) {
+  if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-headline font-bold mb-4">My Profile</h1>
-        <p className="text-muted-foreground">Please log in to view your profile.</p>
-      </div>
-    );
-  }
-
-  if (profileError) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-headline font-bold mb-4">Error</h1>
-        <p className="text-destructive">Could not load your profile. Please try again later.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-headline font-bold mb-6">My Profile</h1>
-      <div className="max-w-2xl space-y-8">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-20 w-20">
-            {user?.image && <AvatarImage src={user.image} alt={user?.name || 'User'} />}
-            <AvatarFallback className="text-3xl">
-              {user?.name ? user.name[0].toUpperCase() : 'U'}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h2 className="text-2xl font-bold">{userProfile?.displayName || user?.name}</h2>
-            <p className="text-muted-foreground">{user?.email}</p>
+      <main className="flex-1">
+        <div className="min-h-[60vh] flex items-center justify-center p-4">
+          <div className="text-center space-y-6 max-w-md">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <User className="h-10 w-10 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">Sign in to view profile</h1>
+            <p className="text-muted-foreground">
+              Personalize your travel preferences and settings.
+            </p>
           </div>
         </div>
+      </main>
+    );
+  }
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Edit Profile</CardTitle>
-            <CardDescription>Update your public display name.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="displayName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Display Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Your display name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+  const transportModes = [
+    { value: 'any', label: 'Any', icon: null },
+    { value: 'flight', label: 'Flights', icon: Plane, color: 'text-blue-500' },
+    { value: 'train', label: 'Trains', icon: Train, color: 'text-orange-500' },
+    { value: 'bus', label: 'Buses', icon: Bus, color: 'text-emerald-500' },
+  ] as const;
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Travel Preferences</CardTitle>
-            <CardDescription>Help us tailor search results to your liking.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...preferencesForm}>
-              <form onSubmit={preferencesForm.handleSubmit(onPreferencesSubmit)} className="space-y-8">
-                <FormField
-                  control={preferencesForm.control}
-                  name="preferredMode"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Preferred Mode of Transport</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          {modeOptions.map(option => (
-                            <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value={option.value} />
-                              </FormControl>
-                              <FormLabel className="font-normal cursor-pointer">{option.label}</FormLabel>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+  const budgetLevels = [
+    { value: 'any', label: 'Flexible' },
+    { value: 'budget', label: 'Budget' },
+    { value: 'mid-range', label: 'Mid-Range' },
+    { value: 'luxury', label: 'Luxury' },
+  ] as const;
+
+  return (
+    <main className="flex-1">
+      {/* Header */}
+      <section className="relative py-12 md:py-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+        <div className="container mx-auto px-4 relative">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-2xl font-bold">
+                {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
+              </div>
+              <button className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted transition-colors">
+                <Camera className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold">{user.name || 'Traveler'}</h1>
+              <p className="text-muted-foreground flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                {user.email}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Content */}
+      <section className="container mx-auto px-4 pb-12">
+        <div className="max-w-2xl space-y-8">
+          {/* Personal Info */}
+          <div className="card-premium p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Personal Information</h2>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="displayName" className="text-sm text-muted-foreground">
+                  Display Name
+                </Label>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="mt-1"
                 />
-                <FormField
-                  control={preferencesForm.control}
-                  name="budgetLevel"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Budget Level</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          {budgetOptions.map(option => (
-                            <FormItem key={option.value} className="flex items-center space-x-3 space-y-0">
-                              <FormControl>
-                                <RadioGroupItem value={option.value} />
-                              </FormControl>
-                              <FormLabel className="font-normal cursor-pointer">{option.label}</FormLabel>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={isSubmittingPrefs || !preferencesForm.formState.isDirty}>
-                  {isSubmittingPrefs && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Preferences
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Travel Preferences */}
+          <div className="card-premium p-6 space-y-6">
+            <h2 className="text-lg font-semibold">Travel Preferences</h2>
+
+            {/* Preferred Mode */}
+            <div>
+              <Label className="text-sm text-muted-foreground mb-3 block">
+                Preferred Transport
+              </Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {transportModes.map(({ value, label, icon: Icon, color }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setPreferredMode(value)}
+                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${preferredMode === value
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/50'
+                      }`}
+                  >
+                    {Icon && <Icon className={`h-5 w-5 ${color}`} />}
+                    <span className="text-sm font-medium">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Budget Level */}
+            <div>
+              <Label className="text-sm text-muted-foreground mb-3 block">
+                Budget Preference
+              </Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {budgetLevels.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setBudgetLevel(value)}
+                    className={`p-4 rounded-xl border-2 transition-all ${budgetLevel === value
+                      ? 'border-accent bg-accent/5'
+                      : 'border-border hover:border-accent/50'
+                      }`}
+                  >
+                    <span className="text-sm font-medium">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full bg-primary hover:bg-primary/90"
+            size="lg"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save Changes
+          </Button>
+        </div>
+      </section>
+    </main>
   );
 }

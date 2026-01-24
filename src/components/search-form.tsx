@@ -3,14 +3,13 @@
 import * as React from 'react';
 import { type UseFormReturn } from "react-hook-form";
 import { format } from "date-fns";
-import { ArrowRightLeft, Calendar as CalendarIcon, Loader2, MapPin, Search } from "lucide-react";
+import { ArrowRightLeft, Calendar as CalendarIcon, Loader2, Search, Plane, Train, Bus, Car } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { LocationAutocomplete } from "@/components/ui/location-autocomplete";
 import type { SearchFilters } from '@/lib/schemas';
 
 interface SearchFormProps {
@@ -19,104 +18,158 @@ interface SearchFormProps {
   isSearching: boolean;
 }
 
+type TransportMode = 'all' | 'flight' | 'train' | 'bus' | 'car';
+
 export default function SearchForm({ form, onSearch, isSearching }: SearchFormProps) {
+  const [selectedMode, setSelectedMode] = React.useState<TransportMode>('all');
+
+  const modes = [
+    { id: 'all', label: 'All', icon: null, color: 'bg-gradient-to-r from-primary to-accent' },
+    { id: 'flight', label: 'Flights', icon: Plane, color: 'bg-blue-500' },
+    { id: 'train', label: 'Trains', icon: Train, color: 'bg-orange-500' },
+    { id: 'bus', label: 'Buses', icon: Bus, color: 'bg-emerald-500' },
+    { id: 'car', label: 'Personal Vehicle', icon: Car, color: 'bg-indigo-500' },
+  ] as const;
+
   return (
-    <Card className="shadow-lg">
-      <CardContent className="p-4 md:p-6">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSearch)} className="space-y-4 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 md:items-end">
-            <FormField
-              control={form.control}
-              name="from"
-              render={({ field }) => (
-                <FormItem className="md:col-span-4">
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    <div className="glass-dark rounded-3xl p-2 md:p-3 shadow-2xl max-w-4xl mx-auto">
+      {/* Transport Mode Tabs */}
+      <div className="flex gap-1 md:gap-2 mb-4 p-1 bg-white/5 rounded-2xl">
+        {modes.map((mode) => (
+          <button
+            key={mode.id}
+            type="button"
+            onClick={() => setSelectedMode(mode.id)}
+            className={cn(
+              "flex-1 py-2.5 px-3 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2",
+              selectedMode === mode.id
+                ? `${mode.color} text-white shadow-lg`
+                : "text-white/60 hover:text-white hover:bg-white/10"
+            )}
+          >
+            {mode.icon && <mode.icon className="h-4 w-4" />}
+            <span className="hidden sm:inline">{mode.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Search Fields */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSearch)} className="space-y-3 md:space-y-0 md:flex md:items-center md:gap-3 p-3">
+          {/* From */}
+          <FormField
+            control={form.control}
+            name="from"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-400 pulse-ring" />
+                  <FormControl>
+                    <LocationAutocomplete
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Where from?"
+                      className="pl-8 h-14 bg-white/10 border-white/10 text-white placeholder:text-white/40 rounded-xl focus:bg-white/15 focus:border-primary/50"
+                    />
+                  </FormControl>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Swap Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            className="hidden md:flex h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white shrink-0"
+            onClick={() => {
+              const from = form.getValues("from");
+              const to = form.getValues("to");
+              form.setValue("from", to);
+              form.setValue("to", from);
+            }}
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+          </Button>
+
+          {/* To */}
+          <FormField
+            control={form.control}
+            name="to"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-rose-400" />
+                  <FormControl>
+                    <LocationAutocomplete
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Where to?"
+                      className="pl-8 h-14 bg-white/10 border-white/10 text-white placeholder:text-white/40 rounded-xl focus:bg-white/15 focus:border-primary/50"
+                    />
+                  </FormControl>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Date */}
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem className="md:w-44 shrink-0">
+                <Popover>
+                  <PopoverTrigger asChild>
                     <FormControl>
-                      <Input placeholder="From" className="pl-10 h-12 text-base" {...field} />
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          "w-full h-14 justify-start text-left font-normal bg-white/10 border border-white/10 text-white rounded-xl hover:bg-white/15",
+                          !field.value && "text-white/40"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {field.value ? format(field.value, "dd MMM") : "When?"}
+                      </Button>
                     </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="md:col-span-1 flex items-center justify-center">
-                <Button variant="ghost" size="icon" type="button" className="hidden md:flex" onClick={() => {
-                    const from = form.getValues("from");
-                    const to = form.getValues("to");
-                    form.setValue("from", to);
-                    form.setValue("to", from);
-                }}>
-                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />
-                </Button>
-            </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <FormField
-              control={form.control}
-              name="to"
-              render={({ field }) => (
-                <FormItem className="md:col-span-4">
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <FormControl>
-                      <Input placeholder="To" className="pl-10 h-12 text-base" {...field} />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col md:col-span-3 lg:col-span-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "pl-3 text-left font-normal h-12 text-base",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button type="submit" className="w-full md:w-auto h-12 text-base md:col-span-12 lg:col-span-1" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }} disabled={isSearching}>
-              {isSearching ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Search className="h-5 w-5" />
-              )}
-               <span className="md:hidden ml-2">Search</span>
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+          {/* Search Button */}
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full md:w-auto h-14 px-8 bg-gradient-to-r from-accent to-orange-600 hover:from-accent/90 hover:to-orange-600/90 text-white font-semibold rounded-xl shadow-lg shadow-accent/30 shrink-0"
+            disabled={isSearching}
+          >
+            {isSearching ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <Search className="h-5 w-5 mr-2" />
+                <span>Search</span>
+              </>
+            )}
+          </Button>
+        </form>
+      </Form>
+    </div>
   );
 }

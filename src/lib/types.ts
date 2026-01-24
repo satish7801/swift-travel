@@ -1,7 +1,7 @@
 import type { GenerateItineraryOutput } from "@/ai/flows/generate-itinerary-flow";
 import type { GenerateItineraryOverviewOutput } from "@/ai/flows/generate-itinerary-overview-flow";
 
-export type TransportMode = 'bus' | 'train' | 'flight';
+export type TransportMode = 'bus' | 'train' | 'flight' | 'car';
 
 export interface Leg {
   id: string;

@@ -1,340 +1,353 @@
-'use client';
+"use client";
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import Link from 'next/link';
+import {
+  MapPin, Calendar, Sparkles, Loader2, X, Plus, AlertTriangle,
+  Lightbulb, ArrowRight, Check, Navigation, Clock
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Loader2, MapPin, Sparkles, Wand2, BookOpen, Lightbulb, Youtube, Wallet, CalendarDays, Car, ShoppingBag, Save, CheckCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { findAttractionsAction, generateItineraryAction } from './actions';
-import type { GenerateItineraryOutput as ItineraryData } from '@/ai/flows/generate-itinerary-flow';
-import type { GenerateItineraryOverviewOutput } from '@/ai/flows/generate-itinerary-overview-flow';
-import { Separator } from '@/components/ui/separator';
-import { useUser } from '@/hooks/use-session';
+import { LocationAutocomplete } from '@/components/ui/location-autocomplete';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { format, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { AuthGuard } from '@/components/auth-guard';
+import { getNearbyPlaces, checkFeasibility, getPopularDestinations } from '@/lib/data/trip-planner';
+import type { City } from '@/lib/data/cities';
 
-
-const cityFormSchema = z.object({
-  city: z.string().min(2, { message: 'Please enter a city name.' }),
-});
-
-type CityFormValues = z.infer<typeof cityFormSchema>;
+interface SelectedCity {
+  name: string;
+  addedAt: number;
+}
 
 export default function PlannerPage() {
-  const { toast } = useToast();
-  const { user } = useUser();
+  return (
+    <AuthGuard>
+      <PlannerContent />
+    </AuthGuard>
+  );
+}
 
-  const [attractions, setAttractions] = React.useState<string[]>([]);
-  const [selectedAttractions, setSelectedAttractions] = React.useState<Set<string>>(new Set());
-  const [itinerary, setItinerary] = React.useState<ItineraryData | null>(null);
-  const [itineraryOverview, setItineraryOverview] = React.useState<GenerateItineraryOverviewOutput | null>(null);
-  const [savedPlanId, setSavedPlanId] = React.useState<string | null>(null);
-  const [planJustSaved, setPlanJustSaved] = React.useState(false);
+function PlannerContent() {
+  const [selectedCities, setSelectedCities] = React.useState<SelectedCity[]>([]);
+  const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
+  const [endDate, setEndDate] = React.useState<Date | undefined>();
+  const [currentInput, setCurrentInput] = React.useState('');
+  const [nearbyPlaces, setNearbyPlaces] = React.useState<any[]>([]);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [feasibility, setFeasibility] = React.useState<any>(null);
 
-  const [isLoadingAttractions, setIsLoadingAttractions] = React.useState(false);
-  const [isGeneratingItinerary, setIsGeneratingItinerary] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [currentCity, setCurrentCity] = React.useState('');
+  const popularDestinations = React.useMemo(() => getPopularDestinations(), []);
 
-  const cityForm = useForm<CityFormValues>({
-    resolver: zodResolver(cityFormSchema),
-    defaultValues: { city: '' },
-  });
-
-  const handleFindAttractions = async ({ city }: CityFormValues) => {
-    setIsLoadingAttractions(true);
-    setAttractions([]);
-    setSelectedAttractions(new Set());
-    setItinerary(null);
-    setItineraryOverview(null);
-    setSavedPlanId(null);
-    setPlanJustSaved(false);
-    setCurrentCity(city);
-
-    const result = await findAttractionsAction(city);
-
-    if (result.error) {
-      toast({ variant: 'destructive', title: 'Error', description: result.error });
-    } else if (result.attractions) {
-      setAttractions(result.attractions);
+  // Update nearby places when cities change
+  React.useEffect(() => {
+    if (selectedCities.length > 0) {
+      const lastCity = selectedCities[selectedCities.length - 1];
+      const nearby = getNearbyPlaces(lastCity.name, 300);
+      // Filter out already selected cities
+      const filtered = nearby.filter(n =>
+        !selectedCities.some(s => s.name.toLowerCase() === n.city.name.toLowerCase())
+      );
+      setNearbyPlaces(filtered.slice(0, 5));
+    } else {
+      setNearbyPlaces([]);
     }
-    setIsLoadingAttractions(false);
+  }, [selectedCities]);
+
+  // Check feasibility when cities or dates change
+  React.useEffect(() => {
+    if (selectedCities.length >= 2 && startDate && endDate) {
+      const result = checkFeasibility(
+        selectedCities.map(c => c.name),
+        startDate,
+        endDate
+      );
+      setFeasibility(result);
+    } else {
+      setFeasibility(null);
+    }
+  }, [selectedCities, startDate, endDate]);
+
+  const addCity = (cityName: string) => {
+    if (!cityName.trim()) return;
+    if (selectedCities.some(c => c.name.toLowerCase() === cityName.toLowerCase())) return;
+
+    setSelectedCities([...selectedCities, { name: cityName, addedAt: Date.now() }]);
+    setCurrentInput('');
   };
 
-  const handleAttractionToggle = (attraction: string) => {
-    setSelectedAttractions(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(attraction)) {
-        newSet.delete(attraction);
-      } else {
-        newSet.add(attraction);
-      }
-      return newSet;
-    });
+  const removeCity = (cityName: string) => {
+    setSelectedCities(selectedCities.filter(c => c.name !== cityName));
   };
 
-  const handleGenerateItinerary = async () => {
-    if (selectedAttractions.size === 0) {
-      toast({ variant: 'destructive', title: 'No attractions selected', description: 'Please select at least one attraction to generate a plan.' });
-      return;
-    }
-
-    setIsGeneratingItinerary(true);
-    setItinerary(null);
-    setItineraryOverview(null);
-    setSavedPlanId(null);
-    setPlanJustSaved(false);
-
-    const result = await generateItineraryAction(currentCity, Array.from(selectedAttractions));
-
-    if (result.error) {
-      toast({ variant: 'destructive', title: 'Error', description: result.error });
-    } else if (result.itinerary && result.overview) {
-      setItinerary(result.itinerary);
-      setItineraryOverview(result.overview);
-    }
-    setIsGeneratingItinerary(false);
+  const handleGenerate = async () => {
+    if (selectedCities.length < 1 || !startDate || !endDate) return;
+    setIsGenerating(true);
+    // TODO: Call AI to generate itinerary
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setIsGenerating(false);
   };
 
-  const handleSavePlan = async () => {
-    if (!user || !itinerary || !currentCity) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in and have an itinerary to save it.' });
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/itineraries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          city: currentCity,
-          title: itineraryOverview?.title || `Trip to ${currentCity}`,
-          summary: itineraryOverview?.introduction || 'A custom travel itinerary',
-          totalDays: itinerary.itinerary.length,
-          itinerary: itinerary,
-          overview: itineraryOverview,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to save');
-
-      const { id } = await response.json();
-      setSavedPlanId(id);
-      setPlanJustSaved(true);
-      toast({ title: 'Plan Saved!', description: 'Your itinerary has been saved to "My Plans".' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Failed to save plan' });
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
+  const tripDays = startDate && endDate ? differenceInDays(endDate, startDate) + 1 : 0;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-headline font-bold">Itinerary Planner</h1>
-          <p className="text-muted-foreground mt-2">
-            Let our AI craft the perfect trip for you. Just enter a city to get started.
-          </p>
+    <main className="flex-1">
+      {/* Header */}
+      <section className="relative py-12 md:py-16 overflow-hidden">
+        <div className="absolute inset-0 hero-mesh" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-3xl mx-auto text-center text-white space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-dark text-white/80 text-sm mb-4">
+              <Sparkles className="w-4 h-4 text-accent" />
+              <span>AI-Powered Planning</span>
+            </div>
+            <h1 className="text-3xl md:text-5xl font-bold">
+              Plan Your Perfect Trip
+            </h1>
+            <p className="text-lg text-white/70">
+              Select destinations, set your dates, and let AI create the perfect itinerary
+            </p>
+          </div>
         </div>
+      </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>1. Choose Your Destination</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...cityForm}>
-              <form onSubmit={cityForm.handleSubmit(handleFindAttractions)} className="flex items-start gap-2">
-                <FormField
-                  control={cityForm.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <FormControl>
-                          <Input placeholder="e.g., Haridwar" className="pl-10 h-11 text-base" {...field} />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+      {/* Main Content */}
+      <section className="container mx-auto px-4 py-8 -mt-8 relative z-20">
+        <div className="max-w-4xl mx-auto space-y-6">
+
+          {/* Step 1: Select Cities */}
+          <div className="card-premium p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-sm">1</div>
+              <h2 className="text-lg font-semibold">Where do you want to go?</h2>
+            </div>
+
+            {/* City Input */}
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1">
+                <LocationAutocomplete
+                  value={currentInput}
+                  onChange={setCurrentInput}
+                  placeholder="Search for a city..."
                 />
-                <Button type="submit" className="h-11" disabled={isLoadingAttractions}>
-                  {isLoadingAttractions ? <Loader2 className="animate-spin" /> : <Sparkles />}
-                  <span className="ml-2">Find Places</span>
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+              </div>
+              <Button onClick={() => addCity(currentInput)} disabled={!currentInput.trim()}>
+                <Plus className="h-4 w-4 mr-1" /> Add
+              </Button>
+            </div>
 
-        {isLoadingAttractions && (
-          <div className="text-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="mt-2 text-muted-foreground">Searching for popular attractions in {currentCity}...</p>
+            {/* Selected Cities */}
+            {selectedCities.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {selectedCities.map((city, index) => (
+                  <Badge
+                    key={city.name}
+                    variant="secondary"
+                    className="pl-3 pr-1 py-1.5 text-sm flex items-center gap-2"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center">
+                      {index + 1}
+                    </span>
+                    {city.name}
+                    <button
+                      onClick={() => removeCity(city.name)}
+                      className="ml-1 p-1 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Popular Destinations */}
+            {selectedCities.length === 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-3">Popular destinations:</p>
+                <div className="flex flex-wrap gap-2">
+                  {popularDestinations.map(city => (
+                    <button
+                      key={city.name}
+                      onClick={() => addCity(city.name)}
+                      className="px-3 py-1.5 rounded-full border border-border hover:border-primary hover:text-primary text-sm transition-colors"
+                    >
+                      {city.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nearby Suggestions */}
+            {nearbyPlaces.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                  <Navigation className="h-4 w-4" />
+                  <span>Nearby places you might like:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {nearbyPlaces.map(place => (
+                    <button
+                      key={place.city.name}
+                      onClick={() => addCity(place.city.name)}
+                      className="px-3 py-1.5 rounded-lg border border-dashed border-accent/50 hover:border-accent hover:bg-accent/5 text-sm transition-colors flex items-center gap-2"
+                    >
+                      <MapPin className="h-3 w-3 text-accent" />
+                      {place.city.name}
+                      <span className="text-xs text-muted-foreground">{place.distance}km</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {attractions.length > 0 && (
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>2. Select Attractions</CardTitle>
-              <CardDescription>
-                Choose the places you want to visit in {currentCity}.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {attractions.map(attraction => (
-                  <div key={attraction} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={attraction}
-                      checked={selectedAttractions.has(attraction)}
-                      onCheckedChange={() => handleAttractionToggle(attraction)}
+          {/* Step 2: Select Dates */}
+          <div className="card-premium p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-sm">2</div>
+              <h2 className="text-lg font-semibold">When are you traveling?</h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Start Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start h-12">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : "Select start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
                     />
-                    <Label htmlFor={attraction} className="cursor-pointer text-sm font-medium leading-none">
-                      {attraction}
-                    </Label>
-                  </div>
-                ))}
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div className="mt-6 text-center">
-                <Button size="lg" onClick={handleGenerateItinerary} disabled={isGeneratingItinerary || selectedAttractions.size === 0}>
-                  {isGeneratingItinerary ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                  <span className="ml-2">Generate My Travel Guide</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {isGeneratingItinerary && (
-          <div className="text-center py-8 mt-8">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="mt-2 text-muted-foreground">Crafting your travel guide...</p>
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">End Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start h-12">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : "Select end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => date < (startDate || new Date())}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {tripDays > 0 && (
+              <div className="mt-4 flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Trip duration:</span>
+                <span className="font-semibold">{tripDays} days</span>
+              </div>
+            )}
           </div>
-        )}
 
-        {itineraryOverview && (
-          <Card className="mt-8">
-            <CardHeader className="text-center p-6">
-              <h2 className="text-4xl font-bold font-headline text-primary">{itineraryOverview.title}</h2>
-              <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">{itineraryOverview.introduction}</p>
-            </CardHeader>
-            <CardContent className="p-6 space-y-8">
-              {/* Quick Facts Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border rounded-lg p-4">
-                <div className="flex items-start gap-4">
-                  <Wallet className="h-7 w-7 text-primary mt-1 shrink-0" />
-                  <div>
-                    <h4 className="font-semibold">Estimated Cost</h4>
-                    <p className="text-muted-foreground text-sm">{itineraryOverview.estimatedCost}</p>
+          {/* Feasibility Warnings & Suggestions */}
+          {feasibility && (
+            <div className="space-y-3">
+              {/* Warnings */}
+              {feasibility.warnings.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-amber-700 dark:text-amber-400">Things to consider</h3>
+                      <ul className="mt-2 space-y-1 text-sm text-amber-600 dark:text-amber-300">
+                        {feasibility.warnings.map((w: string, i: number) => (
+                          <li key={i}>• {w}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-start gap-4">
-                  <CalendarDays className="h-7 w-7 text-primary mt-1 shrink-0" />
-                  <div>
-                    <h4 className="font-semibold">Best Time to Visit</h4>
-                    <p className="text-muted-foreground text-sm">{itineraryOverview.bestTimeToVisit}</p>
-                  </div>
-                </div>
-              </div>
+              )}
 
-              <Separator />
-
-              {/* Daily Breakdown */}
-              <h3 className="text-3xl font-bold font-headline text-center">Your Day-by-Day Itinerary</h3>
-              <div className="space-y-8">
-                {itineraryOverview.dailyBreakdown.map(day => (
-                  <div key={day.day} className="border-l-2 border-primary pl-6 relative">
-                    <div className="absolute -left-[11px] top-1 h-5 w-5 rounded-full bg-primary border-4 border-background" />
-                    <h4 className="text-2xl font-bold font-headline">Day {day.day}: {day.dayTitle}</h4>
-                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed mt-2">{day.narrative}</p>
-                    {day.proTip && (
-                      <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                        <Lightbulb className="h-5 w-5 mt-0.5 shrink-0" />
-                        <div>
-                          <h5 className="font-semibold">Pro Tip</h5>
-                          <p className="text-sm">{day.proTip}</p>
+              {/* Suggestions */}
+              {feasibility.suggestions.length > 0 && (
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Lightbulb className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-primary">Suggestions</h3>
+                      <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                        {feasibility.suggestions.map((s: string, i: number) => (
+                          <li key={i}>• {s}</li>
+                        ))}
+                      </ul>
+                      {feasibility.optimizedOrder && (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <p className="text-sm font-medium">Suggested route order:</p>
+                          <p className="text-sm text-primary mt-1">
+                            {feasibility.optimizedOrder.join(' → ')}
+                          </p>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <Separator />
-
-              {/* Additional Info Section */}
-              <h3 className="text-3xl font-bold font-headline text-center">Practical Information</h3>
-              <div className="grid md:grid-cols-2 gap-8 pt-4">
-                <div>
-                  <h4 className="text-xl font-bold font-headline mb-3 flex items-center gap-3"><Car className="h-6 w-6 text-primary" /> Getting Around</h4>
-                  <p className="text-muted-foreground leading-relaxed">{itineraryOverview.gettingAround}</p>
-                </div>
-                <div>
-                  <h4 className="text-xl font-bold font-headline mb-3 flex items-center gap-3"><ShoppingBag className="h-6 w-6 text-primary" /> What to Pack</h4>
-                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    {itineraryOverview.whatToPack.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Conclusion & Videos */}
-              <div className="text-center">
-                <h3 className="text-2xl font-bold font-headline mb-2">An Unforgettable Journey</h3>
-                <p className="text-muted-foreground max-w-2xl mx-auto">{itineraryOverview.conclusion}</p>
-              </div>
-              {itineraryOverview.suggestedVideos && itineraryOverview.suggestedVideos.length > 0 && (
-                <div className="text-center pt-4">
-                  <h3 className="text-2xl font-bold font-headline mb-4">Visualize Your Trip</h3>
-                  <p className="text-muted-foreground mb-4">Watch travel vlogs to get a feel for your destination:</p>
-                  <div className="flex flex-wrap justify-center gap-4">
-                    {itineraryOverview.suggestedVideos.map((videoQuery, index) => (
-                      <Button key={index} asChild variant="outline">
-                        <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(videoQuery)}`} target="_blank" rel="noopener noreferrer">
-                          <Youtube className="mr-2 h-4 w-4" />
-                          {videoQuery}
-                        </a>
-                      </Button>
-                    ))}
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
-            </CardContent>
-            <CardFooter className="flex-col gap-4 items-center justify-center pt-6">
-              {savedPlanId || planJustSaved ? (
-                <Button size="lg" variant="outline" asChild>
-                  <Link href="/plans">
-                    <CheckCircle />
-                    <span className="ml-2">View Saved Plans</span>
-                  </Link>
-                </Button>
-              ) : (
-                <Button size="lg" onClick={handleSavePlan} disabled={!user || isSaving}>
-                  {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-                  <span className="ml-2">Save Plan</span>
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        )}
 
-      </div>
-    </div>
+              {/* Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-primary">{selectedCities.length}</div>
+                  <div className="text-sm text-muted-foreground">Cities</div>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-accent">{feasibility.totalDistance}</div>
+                  <div className="text-sm text-muted-foreground">km total</div>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold">{feasibility.estimatedDays}</div>
+                  <div className="text-sm text-muted-foreground">Recommended days</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Generate Button */}
+          <Button
+            size="lg"
+            onClick={handleGenerate}
+            disabled={selectedCities.length < 1 || !startDate || !endDate || isGenerating}
+            className="w-full h-14 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold text-lg shadow-lg"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Generating Your Itinerary...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-5 w-5 mr-2" />
+                Generate AI Itinerary
+              </>
+            )}
+          </Button>
+
+        </div>
+      </section>
+    </main>
   );
 }

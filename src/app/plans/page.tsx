@@ -2,215 +2,178 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { ClipboardList, Loader2, Calendar, MapPin, ArrowRight, Plus } from 'lucide-react';
 import { useUser } from '@/hooks/use-session';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Calendar, Clock, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
 import type { SavedItinerary } from '@/lib/types';
+import { AuthGuard } from '@/components/auth-guard';
 
-
-function PlanCard({ plan, onDelete }: { plan: SavedItinerary; onDelete: (id: string) => void; }) {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [isDeleting, setIsDeleting] = React.useState(false);
-  const { toast } = useToast();
-
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    try {
-      const response = await fetch(`/api/itineraries/${plan.id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete');
-      onDelete(plan.id);
-      toast({ title: 'Plan Deleted', description: 'The itinerary has been removed.' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Failed to delete plan' });
-    } finally {
-      setIsDeleting(false);
-      setIsDeleteDialogOpen(false);
-    }
-  };
-
-  const savedDate = plan.savedAt instanceof Date ? plan.savedAt : new Date(plan.savedAt);
-
+export default function PlansPage() {
   return (
-    <>
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between">
-          <div>
-            <CardTitle className="text-2xl font-headline">{plan.title}</CardTitle>
-            <CardDescription>{plan.summary}</CardDescription>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span>Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-            <div className="flex items-center">
-              <Clock className="mr-1 h-4 w-4" />
-              {plan.totalDays} Days
-            </div>
-            <div className="flex items-center">
-              <Calendar className="mr-1 h-4 w-4" />
-              Saved on {format(savedDate, "PPP")}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button asChild variant="outline">
-            <Link href={`/plans/${plan.id}`}>View Plan</Link>
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this itinerary from your saved plans.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    <AuthGuard>
+      <PlansContent />
+    </AuthGuard>
   );
 }
 
-
-export default function MyPlansPage() {
-  const { user, status } = useUser();
-  const { toast } = useToast();
-  const [plans, setPlans] = React.useState<SavedItinerary[]>([]);
+function PlansContent() {
+  const { user } = useUser();
+  const [itineraries, setItineraries] = React.useState<SavedItinerary[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
 
-  // Fetch plans when user is authenticated
   React.useEffect(() => {
-    if (status === 'authenticated' && user) {
-      setLoading(true);
-      fetch('/api/itineraries')
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch plans');
-          return res.json();
-        })
-        .then(data => {
-          setPlans(data);
-          setError(null);
-        })
-        .catch(err => {
-          setError(err.message);
-          setPlans([]);
-        })
-        .finally(() => setLoading(false));
-    } else if (status === 'unauthenticated') {
-      setLoading(false);
-    }
-  }, [user, status]);
+    const fetchItineraries = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch('/api/itineraries');
+        if (response.ok) {
+          const data = await response.json();
+          setItineraries(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch itineraries:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleDeletePlan = (id: string) => {
-    setPlans(prev => prev.filter(p => p.id !== id));
-  }
+    fetchItineraries();
+  }, [user]);
 
-
-  if (status === 'loading') {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-headline font-bold mb-6">My Plans</h1>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-64 w-full rounded-lg" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (status === 'unauthenticated' || !user) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-headline font-bold mb-4">My Plans</h1>
-        <p className="text-muted-foreground mb-4">You need to be logged in to view your saved plans.</p>
-      </div>
-    );
-  }
+  const formatDate = (dateValue: Date | string) => {
+    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-headline font-bold mb-6">My Plans</h1>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-64 w-full rounded-lg" />
-          ))}
+      <main className="flex-1">
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <p className="text-muted-foreground">Loading your plans...</p>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
-  if (error) {
+  if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-headline font-bold mb-4">Error</h1>
-        <p className="text-destructive">{error}</p>
-      </div>
+      <main className="flex-1">
+        <div className="min-h-[60vh] flex items-center justify-center p-4">
+          <div className="text-center space-y-6 max-w-md">
+            <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
+              <ClipboardList className="h-10 w-10 text-accent" />
+            </div>
+            <h1 className="text-2xl font-bold">Sign in to view plans</h1>
+            <p className="text-muted-foreground">
+              Create and save AI-generated travel itineraries.
+            </p>
+          </div>
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-headline font-bold mb-6">My Plans</h1>
-      {plans && plans.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {plans.map(plan => (
-            <PlanCard key={plan.id} plan={plan} onDelete={handleDeletePlan} />
-          ))}
+    <main className="flex-1">
+      {/* Header */}
+      <section className="relative py-12 md:py-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5" />
+        <div className="container mx-auto px-4 relative">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                <ClipboardList className="h-6 w-6 text-accent" />
+              </div>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold">My Plans</h1>
+                <p className="text-muted-foreground">{itineraries.length} saved itineraries</p>
+              </div>
+            </div>
+            <Link href="/planner">
+              <Button className="bg-accent hover:bg-accent/90 text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Plan
+              </Button>
+            </Link>
+          </div>
         </div>
-      ) : (
-        <div className="text-center py-16">
-          <h2 className="text-2xl font-headline font-semibold">No plans saved yet</h2>
-          <p className="text-muted-foreground mt-2">Use the Itinerary Planner to create and save your first trip plan!</p>
-          <Button asChild className="mt-4">
-            <Link href="/planner">Go to Planner</Link>
-          </Button>
-        </div>
-      )}
-    </div>
+      </section>
+
+      {/* Content */}
+      <section className="container mx-auto px-4 pb-12">
+        {itineraries.length === 0 ? (
+          <div className="text-center py-16 space-y-6">
+            <div className="w-24 h-24 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
+              <Calendar className="h-12 w-12 text-muted-foreground/50" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold">No plans yet</h2>
+              <p className="text-muted-foreground mt-2">
+                Use the AI planner to create your first travel itinerary
+              </p>
+            </div>
+            <Link href="/planner">
+              <Button size="lg" className="bg-accent hover:bg-accent/90">
+                Start Planning
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {itineraries.map((itinerary) => (
+              <Link
+                key={itinerary.id}
+                href={`/plans/${itinerary.id}`}
+                className="group block"
+              >
+                <div className="card-premium p-6 h-full hover-lift">
+                  {/* City Badge */}
+                  <div className="flex items-center gap-2 text-sm text-primary mb-3">
+                    <MapPin className="h-4 w-4" />
+                    <span className="font-medium">{itinerary.city}</span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-2 mb-2">
+                    {itinerary.title || `${itinerary.totalDays} Days in ${itinerary.city}`}
+                  </h3>
+
+                  {/* Summary */}
+                  {itinerary.summary && (
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                      {itinerary.summary}
+                    </p>
+                  )}
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/50">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {itinerary.totalDays} days
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                      View <ArrowRight className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+
+                  {/* Date */}
+                  <div className="text-xs text-muted-foreground mt-3">
+                    Saved {formatDate(itinerary.savedAt)}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

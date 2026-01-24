@@ -17,6 +17,7 @@ import SuggestedRoutes from '@/components/suggested-routes';
 import FilterControls from '@/components/filter-controls';
 import ResultsChart from '@/components/results-chart';
 import { useUser } from '@/hooks/use-session';
+import { Plane, Train, Bus, Sparkles, MapPin, Calendar, ArrowRight } from 'lucide-react';
 
 export type SortKey = 'default' | 'price' | 'duration' | 'transfers' | 'carbon';
 
@@ -30,7 +31,6 @@ export default function Home() {
   const { user } = useUser();
   const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
 
-  // Fetch user profile when user is authenticated
   React.useEffect(() => {
     if (user) {
       fetch('/api/user/profile')
@@ -44,7 +44,7 @@ export default function Home() {
 
   const [transportModes, setTransportModes] = React.useState<Set<TransportMode>>(new Set(['flight', 'train', 'bus']));
   const [maxPrice, setMaxPrice] = React.useState<number | undefined>(undefined);
-  const [numStops, setNumStops] = React.useState<number>(-1); // -1 for any
+  const [numStops, setNumStops] = React.useState<number>(-1);
 
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchFormSchema),
@@ -55,7 +55,6 @@ export default function Home() {
     },
   });
 
-  // Set date on client side to avoid hydration mismatch
   React.useEffect(() => {
     form.setValue('date', new Date());
   }, [form]);
@@ -73,12 +72,10 @@ export default function Home() {
     }
   }, [priceBounds]);
 
-
   const handleSearch = async (filters: SearchFilters) => {
     setIsSearching(true);
     setSearchResults(null);
     setSortBy('default');
-    // Reset filters on new search
     setTransportModes(new Set(['flight', 'train', 'bus']));
     setNumStops(-1);
 
@@ -106,7 +103,7 @@ export default function Home() {
 
   const handleDestinationClick = (destination: string) => {
     form.setValue('to', destination);
-    document.querySelector('.relative.z-10')?.scrollIntoView({ behavior: 'smooth' });
+    document.querySelector('.search-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleTransportModeChange = (mode: TransportMode, checked: boolean) => {
@@ -123,27 +120,18 @@ export default function Home() {
 
   const filteredResults = React.useMemo(() => {
     if (!searchResults) return null;
-
     return searchResults.filter(route => {
-      // Filter by transport mode
       const hasValidMode = route.legs.every(leg => transportModes.has(leg.mode));
       if (!hasValidMode) return false;
-
-      // Filter by price
-      if (maxPrice !== undefined && route.price > maxPrice) {
-        return false;
-      }
-
-      // Filter by stops
+      if (maxPrice !== undefined && route.price > maxPrice) return false;
       if (numStops !== -1) {
         const stops = route.legs.length - 1;
-        if (numStops === 2) { // 2+ stops
+        if (numStops === 2) {
           if (stops < 2) return false;
-        } else { // Direct or 1 stop
+        } else {
           if (stops !== numStops) return false;
         }
       }
-
       return true;
     });
   }, [searchResults, transportModes, maxPrice, numStops]);
@@ -151,54 +139,97 @@ export default function Home() {
   const sortedResults = React.useMemo(() => {
     if (!filteredResults) return null;
     if (sortBy === 'default') return filteredResults;
-
     return [...filteredResults].sort((a, b) => {
-      if (sortBy === 'price') {
-        return a.price - b.price;
-      }
-      if (sortBy === 'duration') {
-        return parseDuration(a.totalDuration) - parseDuration(b.totalDuration);
-      }
-      if (sortBy === 'transfers') {
-        return a.legs.length - b.legs.length;
-      }
-      if (sortBy === 'carbon') {
-        return a.carbonFootprint - b.carbonFootprint;
-      }
+      if (sortBy === 'price') return a.price - b.price;
+      if (sortBy === 'duration') return parseDuration(a.totalDuration) - parseDuration(b.totalDuration);
+      if (sortBy === 'transfers') return a.legs.length - b.legs.length;
+      if (sortBy === 'carbon') return a.carbonFootprint - b.carbonFootprint;
       return 0;
     });
   }, [filteredResults, sortBy]);
 
-
   return (
-    <main className="flex-1">
-      <div className="relative h-[400px] md:h-[500px] w-full">
-        {heroImage && (
-          <Image
-            src={heroImage.imageUrl}
-            alt={heroImage.description}
-            fill
-            className="object-cover"
-            priority
-            data-ai-hint={heroImage.imageHint}
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/20" />
-        <div className="relative h-full flex flex-col items-center justify-center text-center text-white p-4">
-          <h1 className="text-4xl md:text-6xl font-headline font-bold drop-shadow-lg">
-            Plan Your Next Adventure
-          </h1>
-          <p className="mt-4 text-lg md:text-xl max-w-2xl drop-shadow">
-            Unify your travel plans. Search and book trains, buses, and flights all in one place.
-          </p>
+    <main className="flex-1 overflow-x-hidden">
+      {/* Hero Section */}
+      <section className="relative min-h-[85vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 hero-mesh" />
+
+        {/* Decorative Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl float" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/20 rounded-full blur-3xl float" style={{ animationDelay: '-3s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-500/10 rounded-full blur-3xl" />
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 -mt-24 relative z-10">
-        <SearchForm form={form} onSearch={handleSearch} isSearching={isSearching} />
-      </div>
+        {/* Content */}
+        <div className="relative z-10 container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-dark text-white/80 text-sm">
+              <Sparkles className="w-4 h-4 text-accent" />
+              <span>AI-Powered Travel Planning</span>
+            </div>
 
-      <div className="container mx-auto px-4 mt-8 pb-8">
+            {/* Headline */}
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white leading-tight">
+              Your Journey,{' '}
+              <span className="gradient-text-light">Reimagined</span>
+            </h1>
+
+            {/* Subheadline */}
+            <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed">
+              Compare trains, buses, and flights across India in seconds.
+              Smart routing, real-time availability, and the best prices.
+            </p>
+
+            {/* Transport Icons */}
+            <div className="flex items-center justify-center gap-6 md:gap-8">
+              {[
+                { icon: Train, label: 'Trains', color: 'text-orange-400' },
+                { icon: Bus, label: 'Buses', color: 'text-emerald-400' },
+                { icon: Plane, label: 'Flights', color: 'text-blue-400' },
+              ].map(({ icon: Icon, label, color }) => (
+                <div key={label} className="flex flex-col items-center gap-2 group">
+                  <div className={`p-4 rounded-2xl glass-dark group-hover:scale-110 transition-transform ${color}`}>
+                    <Icon className="w-6 h-6 md:w-8 md:h-8" />
+                  </div>
+                  <span className="text-sm text-white/60">{label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Search Form */}
+            <div className="search-section pt-8">
+              <SearchForm form={form} onSearch={handleSearch} isSearching={isSearching} />
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-4 md:gap-8 pt-8 max-w-lg mx-auto">
+              {[
+                { value: '200+', label: 'Stations' },
+                { value: '50+', label: 'Routes' },
+                { value: '24/7', label: 'Support' },
+              ].map(({ value, label }) => (
+                <div key={label} className="text-center">
+                  <div className="text-2xl md:text-3xl font-bold text-white">{value}</div>
+                  <div className="text-sm text-white/50">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+          <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center p-2">
+            <div className="w-1.5 h-3 rounded-full bg-white/50" />
+          </div>
+        </div>
+      </section>
+
+      {/* Results Section */}
+      <section className="container mx-auto px-4 py-12">
         <div className="space-y-8">
           <SuggestedRoutes onDestinationClick={handleDestinationClick} />
 
@@ -226,7 +257,8 @@ export default function Home() {
             initialResultCount={searchResults?.length ?? 0}
           />
         </div>
-      </div>
+      </section>
+
       <ChatWidget results={sortedResults} />
     </main>
   );

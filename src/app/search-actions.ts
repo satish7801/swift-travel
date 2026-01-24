@@ -23,7 +23,7 @@ async function validateLocation(location: string): Promise<string> {
     if (possibleLocations.length === 1) {
         return possibleLocations[0];
     }
-    
+
     // Otherwise, use another AI step to confirm the best match from the possibilities.
     const confirmation = await confirmLocationChoice({
         locationName: location,
@@ -43,7 +43,7 @@ export async function searchRoutesAction(
     preferences?: Partial<UserProfile['travelPreferences']>
 ): Promise<Route[]> {
     const validatedFields = searchFormSchema.safeParse(filters);
-    
+
     if (!validatedFields.success) {
         throw new Error(validatedFields.error.errors[0].message);
     }
@@ -56,16 +56,38 @@ export async function searchRoutesAction(
             validateLocation(from),
             validateLocation(to)
         ]);
-        
+
         const input = {
-          from: validatedFrom,
-          to: validatedTo,
-          date: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          travelPreferences: preferences,
+            from: validatedFrom,
+            to: validatedTo,
+            date: date,
+            modes: [], // Will be handled by transport preferences if needed, or default to all
+            // We can map user travelPreferences here if we update ProviderRegistry to accept them
         }
 
-        const aiResponse = await generateRoutes(input);
-        return aiResponse.routes;
+        // Import registry dynamically to avoid circular deps if any (though importing from Providers index is fine)
+        const { providerRegistry } = await import('@/lib/providers');
+
+        // Convert date string/Date object to Date object
+        const searchDate = date || new Date();
+
+        // Map preferences to modes if present
+        const modes: ('flight' | 'train' | 'bus' | 'car')[] = [];
+        if (preferences?.preferredMode && preferences.preferredMode !== 'any') {
+            modes.push(preferences.preferredMode);
+        } else {
+            modes.push('flight', 'train', 'bus', 'car');
+        }
+
+        const routes = await providerRegistry.searchAll({
+            from: validatedFrom,
+            to: validatedTo,
+            date: searchDate,
+            modes: modes,
+            budgetMax: preferences?.budgetLevel === 'budget' ? 2000 : undefined
+        });
+
+        return routes;
 
     } catch (error: any) {
         console.error('Search action error:', error);
