@@ -26,12 +26,13 @@ export async function findAttractionsAction(city: string): Promise<{ attractions
 }
 
 const ItinerarySchema = z.object({
+    originCity: z.string(),
     city: z.string(),
     attractions: z.array(z.string()).min(1, { message: "Please select at least one attraction." }),
 });
 
-export async function generateItineraryAction(city: string, attractions: string[]) {
-    const validatedInput = ItinerarySchema.safeParse({ city, attractions });
+export async function generateItineraryAction(originCity: string, city: string, attractions: string[]) {
+    const validatedInput = ItinerarySchema.safeParse({ originCity, city, attractions });
     if (!validatedInput.success) {
         return { error: validatedInput.error.errors[0].message };
     }
@@ -44,7 +45,7 @@ export async function generateItineraryAction(city: string, attractions: string[
         }
 
         // Step 2: Immediately generate the rich overview
-        const overview = await generateItineraryOverview({ city, itinerary: basicItinerary });
+        const overview = await generateItineraryOverview({ originCity, city, itinerary: basicItinerary });
         if (!overview) {
             throw new Error('Failed to generate the detailed itinerary overview.');
         }
@@ -75,14 +76,18 @@ export async function generateAndSaveItinerary(cities: string[], startDate: stri
         return { success: false, error: "Please select both start and end dates." };
     }
 
-    const city = cities[0]; // Primary city
+    const originCity = cities[0];
+    const city = cities.length > 1 ? cities[1] : cities[0];
+
+    // Convert cities (excluding origin) into attractions/destinations
     const attractions = cities.length > 1
-        ? cities.map(c => `Visit ${c}`)
+        ? cities.slice(1).map(c => `Explore ${c}`)
         : [`Explore ${city}`, `Local sightseeing in ${city}`, `Cultural experiences in ${city}`];
 
     try {
         // Step 1: Generate structured itinerary
         const itineraryData = await generateItinerary({
+            originCity,
             city,
             attractions,
         });
@@ -93,6 +98,7 @@ export async function generateAndSaveItinerary(cities: string[], startDate: stri
 
         // Step 2: Generate rich overview
         const overview = await generateItineraryOverview({
+            originCity,
             city,
             itinerary: itineraryData,
         });

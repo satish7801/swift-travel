@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A flow to generate a cinematic video itinerary for a travel route.
  *
@@ -8,11 +6,11 @@
  * - GenerateTripVideoOutput - The return type for the generateTripVideo function.
  */
 
-import {ai} from '@/ai/genkit';
-import type {Route} from '@/lib/types';
-import {z} from 'genkit';
-import {MediaPart} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import { ai } from '@/ai/genkit';
+import type { Route } from '@/lib/types';
+import { z } from 'genkit';
+import { MediaPart } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const GenerateTripVideoInputSchema = z.object({
   route: z.any().describe('The travel route object.'),
@@ -58,7 +56,7 @@ const generateTripVideoFlow = ai.defineFlow(
     inputSchema: GenerateTripVideoInputSchema,
     outputSchema: GenerateTripVideoOutputSchema,
   },
-  async ({route}: {route: Route}) => {
+  async ({ route }: { route: Route }) => {
     const from = route.legs[0].departureLocation.split(',')[0];
     const to = route.legs[route.legs.length - 1].arrivalLocation.split(',')[0];
     const modes = route.legs.map(leg => leg.mode).join(' and ');
@@ -70,7 +68,7 @@ const generateTripVideoFlow = ai.defineFlow(
     - The video should be exciting, upbeat, and inspiring. Use dynamic camera movements.
     - End with the text '${to} awaits!' stylishly overlayed on a beautiful final shot of the destination at sunset or sunrise.`;
 
-    let {operation} = await ai.generate({
+    let { operation } = await ai.generate({
       model: googleAI.model('veo-2.0-generate-001'),
       prompt: prompt,
       config: {
@@ -102,6 +100,6 @@ const generateTripVideoFlow = ai.defineFlow(
 
     const videoDataUri = await getVideoAsDataUri(video);
 
-    return {videoDataUri};
+    return { videoDataUri };
   }
 );

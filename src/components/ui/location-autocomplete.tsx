@@ -5,6 +5,9 @@ import { MapPin, Train, Plane, Bus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { CITIES, type City } from "@/lib/data/cities";
+import { searchCities, type NominatimResult } from "@/lib/services/nominatim";
+import { useDebounce } from "@/hooks/use-debounce"; // We might need to implement this or use a simple timeout
+
 
 interface LocationAutocompleteProps {
     value: string;
@@ -24,36 +27,80 @@ export function LocationAutocomplete({
     const [isOpen, setIsOpen] = React.useState(false);
     const [query, setQuery] = React.useState(value);
     const [suggestions, setSuggestions] = React.useState<City[]>([]);
+    const [isLoading, setIsLoading] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
+
+    // Simple debounce implementation inside component to avoid extra file dependency if not present
+    const [debouncedQuery, setDebouncedQuery] = React.useState(query);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => setDebouncedQuery(query), 500);
+        return () => clearTimeout(timer);
+    }, [query]);
 
     // Update query when external value changes
     React.useEffect(() => {
         setQuery(value);
     }, [value]);
 
-    // Filter cities based on query
+    // Fetch cities based on query
     React.useEffect(() => {
-        if (query.length < 2) {
+        if (debouncedQuery.length < 2) {
             setSuggestions([]);
             return;
         }
 
-        const normalizedQuery = query.toLowerCase();
-        const matches = CITIES.filter((city) => {
-            // Match by city name
-            if (city.name.toLowerCase().includes(normalizedQuery)) return true;
-            // Match by alias
-            if (city.aliases.some((alias) => alias.toLowerCase().includes(normalizedQuery))) return true;
-            // Match by station codes
-            if (city.stationCodes.some((code) => code.toLowerCase().includes(normalizedQuery))) return true;
-            // Match by airport code
-            if (city.airportCode?.toLowerCase().includes(normalizedQuery)) return true;
-            return false;
-        }).slice(0, 8); // Limit to 8 suggestions
+        const fetchCities = async () => {
+            setIsLoading(true);
+            try {
+                // 1. Fetch from Nominatim
+                const apiResults = await searchCities(debouncedQuery);
 
-        setSuggestions(matches);
-    }, [query]);
+                // 2. Map to City interface and enrich with static data if matched
+                const mappedResults: City[] = apiResults.map((result) => {
+                    // Try to find in static DB for extra metadata (images, codes)
+                    const staticMatch = CITIES.find(c =>
+                        c.name.toLowerCase() === result.display_name.split(',')[0].toLowerCase() ||
+                        c.aliases.includes(result.display_name.split(',')[0].toLowerCase())
+                    );
+
+                    const cityName = result.address?.city || result.address?.town || result.address?.village || result.display_name.split(',')[0];
+                    const stateName = result.address?.state || result.address?.country || '';
+
+                    if (staticMatch) {
+                        return {
+                            ...staticMatch,
+                            lat: parseFloat(result.lat), // Prefer API coords
+                            lng: parseFloat(result.lon)
+                        };
+                    }
+
+                    return {
+                        name: cityName || result.display_name,
+                        aliases: [],
+                        state: stateName,
+                        stationCodes: [],
+                        lat: parseFloat(result.lat),
+                        lng: parseFloat(result.lon),
+                        // No image/codes for purely dynamic results
+                    };
+                });
+
+                // Remove duplicates based on name/state
+                const uniqueResults = mappedResults.filter((v, i, a) => a.findIndex(t => (t.name === v.name && t.state === v.state)) === i);
+
+                setSuggestions(uniqueResults);
+            } catch (error) {
+                console.error("Failed to fetch suggestions", error);
+                setSuggestions([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchCities();
+    }, [debouncedQuery]);
 
     // Close dropdown when clicking outside
     React.useEffect(() => {
@@ -154,8 +201,18 @@ export function LocationAutocomplete({
                 </div>
             )}
 
+            {/* Loading state */}
+            {isOpen && isLoading && suggestions.length === 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg p-3">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Searching places...</span>
+                    </div>
+                </div>
+            )}
+
             {/* No results message */}
-            {isOpen && query.length >= 2 && suggestions.length === 0 && (
+            {isOpen && !isLoading && debouncedQuery.length >= 2 && suggestions.length === 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg p-3">
                     <p className="text-sm text-muted-foreground text-center">No locations found</p>
                 </div>

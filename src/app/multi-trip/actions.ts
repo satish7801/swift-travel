@@ -7,11 +7,15 @@ import { saveItinerary } from '@/lib/db/itineraries';
 import { generateId } from '@/lib/utils';
 import type { Route, SavedItinerary } from '@/lib/types';
 import type { GenerateItineraryOutput } from '@/ai/flows/generate-itinerary-flow';
+import { estimateTravelDetails } from '@/lib/travel-utils';
+import { generateMultiCityItinerary } from '@/ai/flows/generate-multi-city-itinerary-flow';
 
 interface Stop {
     id: string;
     location: string;
     date: Date | string | undefined;
+    period?: string;
+    selectedAttractions?: string[];
 }
 
 export async function createMultiCityItinerary(stops: Stop[]) {
@@ -31,83 +35,63 @@ export async function createMultiCityItinerary(stops: Stop[]) {
     const title = `Multi-City Trip: ${city} to ${stops[stops.length - 1].location}`;
     const summary = `A journey across ${stops.length} cities starting from ${city}.`;
 
-    // Generate deterministic itinerary based on stops
-    // Assuming auto-filled dates from client are present or we mock them
-
-    const itineraryDays: any[] = [];
-    let dayCount = 1;
-
-    for (let i = 0; i < stops.length; i++) {
-        const stop = stops[i];
-        const nextStop = stops[i + 1];
-
-        // Day for arriving/exploring current stop
-        itineraryDays.push({
-            day: dayCount,
-            title: `Explore ${stop.location}`,
-            activities: [
-                `Arrive in ${stop.location}`,
-                `Check-in to hotel`,
-                `Local sightseeing in ${stop.location}`,
-                `Dinner at a local restaurant`
-            ]
-        });
-        dayCount++;
-
-        // Add another day for exploration if it's not a transit-only stop
-        // For simplicity, just 1 day per stop + travel day
-        if (i < stops.length - 1) {
-            itineraryDays.push({
-                day: dayCount,
-                title: `Travel to ${nextStop.location}`,
-                activities: [
-                    `Breakfast in ${stop.location}`,
-                    `Travel to ${nextStop.location} (Flight/Train/Bus)`,
-                    `Arrival in ${nextStop.location}`
-                ]
-            });
-            dayCount++;
+    // Prepare stops with travel details
+    const stopsWithTravel = await Promise.all(stops.map(async (s, index) => {
+        let travelToNext = undefined;
+        if (index < stops.length - 1) {
+            const nextStop = stops[index + 1];
+            travelToNext = estimateTravelDetails(s.location, nextStop.location);
         }
-    }
 
-    const generatedItinerary: GenerateItineraryOutput = {
-        totalDays: dayCount - 1,
-        itinerary: itineraryDays,
-        summary: summary
-    };
+        return {
+            id: s.id,
+            location: s.location,
+            date: s.date ? (typeof s.date === 'string' ? s.date : s.date.toISOString()) : undefined,
+            period: s.period,
+            selectedAttractions: s.selectedAttractions,
+            travelToNext
+        };
+    }));
 
-    // Overview for the rich view
-    const overview = {
-        title: title,
-        introduction: summary,
-        dailyBreakdown: itineraryDays.map(d => ({
-            day: d.day,
-            dayTitle: d.title,
-            narrative: `Spend your day exploring the beautiful sights of ${d.title.replace('Explore ', '').replace('Travel to ', '')}. Enjoy local cuisine and culture.`,
-            proTip: "Wear comfortable shoes for walking."
-        })),
-        conclusion: "Have a safe trip back home!",
-        estimatedCost: "₹15,000 - ₹25,000",
-        bestTimeToVisit: "October to March",
-        gettingAround: "Local taxis and public transport are available.",
-        whatToPack: ["Comfortable clothes", "Walking shoes", "Power bank", "Camera"],
-        suggestedVideos: [`Travel vlog ${city}`, `Things to do in ${stops[stops.length - 1].location}`]
-    };
-
+    // Generate AI itinerary based on stops
     try {
+        const generatedItinerary = await generateMultiCityItinerary({
+            stops: stopsWithTravel
+        });
+
+        // Overview for the rich view
+        const overviewLine = `A journey across ${stops.length} cities starting from ${city}.`;
+
+        const overview = {
+            title: title,
+            introduction: generatedItinerary.summary || overviewLine,
+            dailyBreakdown: generatedItinerary.itinerary.map((d: any) => ({
+                day: d.day,
+                dayTitle: d.title,
+                narrative: `Experience: ${d.activities.join('. ')}.`, // Simple narrative fallback
+                proTip: "Wear comfortable shoes and carry water."
+            })),
+            conclusion: "Have a safe and memorable trip!",
+            estimatedCost: "₹15,000 - ₹25,000", // This could also be AI generated ideally
+            bestTimeToVisit: "October to March",
+            gettingAround: "Local taxis and public transport.",
+            whatToPack: ["Comfortable clothes", "Walking shoes", "Power bank", "Camera", "Sunscreen"],
+            suggestedVideos: [`Travel vlog ${destinations}`]
+        };
+
         const id = await saveItinerary(
             session.user.id,
             city,
             title,
-            summary,
+            generatedItinerary.summary || summary,
             generatedItinerary.totalDays,
             generatedItinerary,
             overview
         );
 
         return { success: true, id: id };
-    } catch (error) {
-        console.error("Failed to save itinerary", error);
-        return { success: false, error: "Failed to save itinerary to database." };
+    } catch (error: any) {
+        console.error("Failed to generate/save itinerary", error);
+        return { success: false, error: error.message || "Failed to generate itinerary. Please try again." };
     }
 }

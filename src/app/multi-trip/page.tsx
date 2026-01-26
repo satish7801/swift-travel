@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from 'react';
-import { Plus, Trash2, GripVertical, MapPin, Calendar, Search, Loader2, ArrowDown, Sparkles } from 'lucide-react';
+import { Plus, Trash2, GripVertical, MapPin, Calendar, Search, Loader2, ArrowDown, Sparkles, Clock, Map } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Button } from '@/components/ui/button';
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -11,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { createMultiCityItinerary } from './actions';
 import { estimateDistance } from '@/lib/data/trip-planner';
 import { CITIES } from '@/lib/data/cities';
+import { findCitiesOnRoute } from '@/lib/route-utils';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,6 +21,8 @@ interface Stop {
     id: string;
     location: string;
     date: Date | undefined;
+    period?: string; // 'Morning' | 'Afternoon' | 'Evening' | 'Night'
+    selectedAttractions?: string[];
 }
 
 export default function MultiStopTripPage() {
@@ -80,6 +85,11 @@ export default function MultiStopTripPage() {
                     travelDays = Math.ceil(dist / 800);
                 }
 
+                // Smart Duration Logic: If user selected many attractions, increase stay
+                if (current.selectedAttractions && current.selectedAttractions.length > 2) {
+                    stayDays += 1; // Add extra day for detailed exploration
+                }
+
                 const nextDate = new Date(current.date);
                 // Add stay duration + travel time to previous date
                 nextDate.setDate(nextDate.getDate() + stayDays + Math.max(1, travelDays));
@@ -87,6 +97,21 @@ export default function MultiStopTripPage() {
             }
         }
         return filledStops;
+    };
+
+    const toggleAttraction = (stopId: string, attraction: string) => {
+        setStops(stops.map(stop => {
+            if (stop.id === stopId) {
+                const current = stop.selectedAttractions || [];
+                const isSelected = current.includes(attraction);
+                const newSelection = isSelected
+                    ? current.filter(a => a !== attraction)
+                    : [...current, attraction];
+
+                return { ...stop, selectedAttractions: newSelection };
+            }
+            return stop;
+        }));
     };
 
     const handleSearch = async () => {
@@ -149,6 +174,49 @@ export default function MultiStopTripPage() {
                         <div className="space-y-6">
                             {stops.map((stop, index) => (
                                 <div key={stop.id} className="relative">
+                                    {/* Smart Route Suggestions - Render BEFORE the current card so it appears "on the way" */}
+                                    {index > 0 && stops[index - 1].location && stop.location && (
+                                        <div className="mb-6 ml-14 relative z-10">
+                                            {(() => {
+                                                const suggestions = findCitiesOnRoute(stops[index - 1].location, stop.location);
+                                                const filteredSuggestions = suggestions.filter(s => !stops.some(existing => existing.location.toLowerCase() === s.name.toLowerCase()));
+
+                                                if (filteredSuggestions.length === 0) return null;
+
+                                                return (
+                                                    <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-3">
+                                                        <div className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">
+                                                            <Map className="h-3 w-3" />
+                                                            Places to visit from {stops[index - 1].location} to {stop.location}:
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {filteredSuggestions.map(city => (
+                                                                <Badge
+                                                                    key={city.name}
+                                                                    variant="secondary"
+                                                                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                                                    onClick={() => {
+                                                                        const newStop: Stop = {
+                                                                            id: Date.now().toString(),
+                                                                            location: city.name,
+                                                                            date: undefined
+                                                                        };
+                                                                        const newStops = [...stops];
+                                                                        newStops.splice(index, 0, newStop);
+                                                                        setStops(newStops);
+                                                                    }}
+                                                                >
+                                                                    <Plus className="h-3 w-3 mr-1" />
+                                                                    {city.name}
+                                                                </Badge>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+
                                     {/* Connection line */}
                                     {index < stops.length - 1 && (
                                         <div className="absolute left-5 top-16 bottom-0 w-0.5 bg-gradient-to-b from-primary to-accent" />
@@ -191,48 +259,128 @@ export default function MultiStopTripPage() {
                                                 </div>
 
                                                 <div>
+                                                </div>
+
+                                                <div>
                                                     <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                                                        {index === 0 ? 'Departure' : 'Arrival'} Date
+                                                        {index === 0 ? 'Departure' : 'Arrival'} Time
                                                     </label>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                variant="outline"
-                                                                className={cn(
-                                                                    "w-full justify-start text-left font-normal h-12",
-                                                                    !stop.date && "text-muted-foreground"
-                                                                )}
-                                                            >
-                                                                <Calendar className="mr-2 h-4 w-4" />
-                                                                {stop.date ? format(stop.date, "PPP") : "Select date"}
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0">
-                                                            <CalendarComponent
-                                                                mode="single"
-                                                                selected={stop.date}
-                                                                onSelect={(date) => updateStop(stop.id, 'date', date)}
-                                                                disabled={(date) => date < new Date()}
-                                                                initialFocus
-                                                            />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <div className="flex gap-2">
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    className={cn(
+                                                                        "flex-1 justify-start text-left font-normal h-12",
+                                                                        !stop.date && "text-muted-foreground"
+                                                                    )}
+                                                                >
+                                                                    <Calendar className="mr-2 h-4 w-4" />
+                                                                    {stop.date ? format(stop.date, "MMM d") : "Date"}
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto p-0">
+                                                                <CalendarComponent
+                                                                    mode="single"
+                                                                    selected={stop.date}
+                                                                    onSelect={(date) => updateStop(stop.id, 'date', date)}
+                                                                    disabled={(date) => date < new Date()}
+                                                                    initialFocus
+                                                                />
+                                                            </PopoverContent>
+                                                        </Popover>
+
+                                                        <Select
+                                                            value={stop.period}
+                                                            onValueChange={(value) => updateStop(stop.id, 'period', value)}
+                                                        >
+                                                            <SelectTrigger className="w-[110px] h-12">
+                                                                <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
+                                                                <SelectValue placeholder="Time" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Morning">Morning</SelectItem>
+                                                                <SelectItem value="Afternoon">Afternoon</SelectItem>
+                                                                <SelectItem value="Evening">Evening</SelectItem>
+                                                                <SelectItem value="Night">Night</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            {/* City Attractions Preview */}
+                                            {stop.location && (() => {
+                                                const cityData = CITIES.find(c => c.name.toLowerCase() === stop.location.toLowerCase() || c.aliases.includes(stop.location.toLowerCase()));
+                                                if (cityData?.attractions && cityData.attractions.length > 0) {
+                                                    return (
+                                                        <div className="mt-3 pt-3 border-t border-border/50">
+                                                            <div className="flex items-start gap-2">
+                                                                <Sparkles className="h-3 w-3 text-amber-500 mt-1 shrink-0" />
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center justify-between mb-1.5">
+                                                                        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Famous Spots</p>
+                                                                        <a
+                                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.location)}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"
+                                                                        >
+                                                                            View on Map <MapPin className="h-3 w-3" />
+                                                                        </a>
+                                                                    </div>
+                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                        {cityData.attractions.slice(0, 6).map(attr => {
+                                                                            const isSelected = stop.selectedAttractions?.includes(attr);
+                                                                            return (
+                                                                                <Badge
+                                                                                    key={attr}
+                                                                                    variant={isSelected ? "default" : "outline"}
+                                                                                    className={cn(
+                                                                                        "cursor-pointer transition-all text-[10px]",
+                                                                                        isSelected
+                                                                                            ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"
+                                                                                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground border-dashed"
+                                                                                    )}
+                                                                                    onClick={() => toggleAttraction(stop.id, attr)}
+                                                                                >
+                                                                                    {attr} {isSelected && "✓"}
+                                                                                </Badge>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                    {stop.selectedAttractions && stop.selectedAttractions.length > 2 && (
+                                                                        <p className="text-[10px] text-amber-600 mt-1.5 italic">
+                                                                            * Enhanced stay duration added for detailed visit.
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
 
-                                        {/* Remove button */}
-                                        {index > 0 && index < stops.length - 1 && (
+                                        {/* Remove button - Consistent layout */}
+                                        <div className="flex flex-col justify-center">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="text-muted-foreground hover:text-destructive shrink-0"
+                                                className={cn(
+                                                    "text-muted-foreground hover:text-destructive shrink-0",
+                                                    (index === 0 || stops.length <= 2) && "opacity-20 pointer-events-none" // 2 stops minimum
+                                                )}
                                                 onClick={() => removeStop(stop.id)}
+                                                disabled={index === 0 || stops.length <= 2}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
-                                        )}
+                                        </div>
                                     </div>
+
+
                                 </div>
                             ))}
 
@@ -295,6 +443,6 @@ export default function MultiStopTripPage() {
                     </div>
                 </div>
             </section>
-        </main>
+        </main >
     );
 }

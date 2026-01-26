@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A flow to generate a shareable summary of a travel itinerary.
  *
@@ -8,17 +6,17 @@
  * - SummarizeItineraryOutput - The return type for the function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 import type { SavedItinerary } from '@/lib/types';
 
 
-export const SummarizeItineraryInputSchema = z.object({
-    itinerary: z.custom<SavedItinerary>().describe('The saved itinerary object.'),
+const SummarizeItineraryInputSchema = z.object({
+  itinerary: z.custom<SavedItinerary>().describe('The saved itinerary object.'),
 });
 export type SummarizeItineraryInput = z.infer<typeof SummarizeItineraryInputSchema>;
 
-export const SummarizeItineraryOutputSchema = z.object({
+const SummarizeItineraryOutputSchema = z.object({
   summary: z.string().describe("A short, friendly, and shareable summary of the trip, suitable for a text message."),
 });
 export type SummarizeItineraryOutput = z.infer<typeof SummarizeItineraryOutputSchema>;
@@ -32,14 +30,14 @@ export async function summarizeItineraryForSharing(
 
 
 const prompt = ai.definePrompt({
-    name: 'summarizeItineraryPrompt',
-    input: { schema: SummarizeItineraryInputSchema },
-    output: { schema: SummarizeItineraryOutputSchema },
-    prompt: `You are a travel assistant. A user wants to share their trip plan with a friend.
+  name: 'summarizeItineraryPrompt',
+  input: { schema: SummarizeItineraryInputSchema },
+  output: { schema: SummarizeItineraryOutputSchema },
+  prompt: `You are a travel assistant. A user wants to share their trip plan with a friend.
 Based on the following itinerary data, create a short, exciting, and friendly summary.
 
 Itinerary Data:
-{{{JSON.stringify itinerary}}}
+{{{json itinerary}}}
 
 **Instructions:**
 - Keep it concise and enthusiastic, perfect for sharing in a text message or social media post.

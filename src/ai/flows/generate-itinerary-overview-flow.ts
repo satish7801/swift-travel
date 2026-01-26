@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A flow to generate a rich, narrative-style travel overview from a structured itinerary.
  *
@@ -8,23 +6,24 @@
  * - GenerateItineraryOverviewOutput - The return type for the function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 import type { GenerateItineraryOutput } from './generate-itinerary-flow';
 
 // We need the city and the previously generated itinerary.
 const GenerateItineraryOverviewInputSchema = z.object({
-    city: z.string().describe('The main city for the trip.'),
-    itinerary: z.custom<GenerateItineraryOutput>().describe('The structured itinerary object generated previously.'),
+  originCity: z.string().optional().describe('The starting city for the trip.'),
+  city: z.string().describe('The main city for the trip.'),
+  itinerary: z.custom<GenerateItineraryOutput>().describe('The structured itinerary object generated previously.'),
 });
 export type GenerateItineraryOverviewInput = z.infer<typeof GenerateItineraryOverviewInputSchema>;
 
 
 const DailyBreakdownSchema = z.object({
-    day: z.number().describe("The day number."),
-    dayTitle: z.string().describe("The title for the day's plan."),
-    narrative: z.string().describe("A detailed, engaging narrative of the day's activities, written like a travel blogger describing the experience."),
-    proTip: z.string().optional().describe("A helpful pro-tip for the day, like a seasoned travel agent would give."),
+  day: z.number().describe("The day number."),
+  dayTitle: z.string().describe("The title for the day's plan."),
+  narrative: z.string().describe("A detailed, engaging narrative of the day's activities, written like a travel blogger describing the experience."),
+  proTip: z.string().optional().describe("A helpful pro-tip for the day, like a seasoned travel agent would give."),
 });
 
 const GenerateItineraryOverviewOutputSchema = z.object({
@@ -48,13 +47,13 @@ export async function generateItineraryOverview(
 
 
 const prompt = ai.definePrompt({
-    name: 'generateItineraryOverviewPrompt',
-    input: { schema: GenerateItineraryOverviewInputSchema },
-    output: { schema: GenerateItineraryOverviewOutputSchema },
-    prompt: `You are an expert travel blogger and agent with a knack for storytelling. A user has created a basic itinerary for a trip to {{{city}}}. Your task is to transform this structured plan into a rich, engaging, and personal travel overview, as if you are sharing your own experience or giving expert advice.
+  name: 'generateItineraryOverviewPrompt',
+  input: { schema: GenerateItineraryOverviewInputSchema },
+  output: { schema: GenerateItineraryOverviewOutputSchema },
+  prompt: `You are an expert travel blogger and agent with a knack for storytelling. A user has created a basic itinerary for a trip starting from {{{originCity}}} to {{{city}}}. Your task is to transform this structured plan into a rich, engaging, and personal travel overview, as if you are sharing your own experience or giving expert advice.
 
 Here is the structured itinerary you need to work with:
-{{{JSON.stringify itinerary}}}
+{{{json itinerary}}}
 
 Based on this, generate a response in the specified JSON format.
 
@@ -83,7 +82,7 @@ const generateItineraryOverviewFlow = ai.defineFlow(
     outputSchema: GenerateItineraryOverviewOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     if (!output) {
       throw new Error('Failed to generate itinerary overview.');
     }

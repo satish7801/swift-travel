@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview A flow to convert an itinerary summary to audio.
  *
@@ -7,17 +6,17 @@
  * - GenerateAudioSummaryOutput - The return type for the function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import wav from 'wav';
 
-export const GenerateAudioSummaryInputSchema = z.object({
+const GenerateAudioSummaryInputSchema = z.object({
   text: z.string().describe('The text to convert to speech.'),
 });
 export type GenerateAudioSummaryInput = z.infer<typeof GenerateAudioSummaryInputSchema>;
 
-export const GenerateAudioSummaryOutputSchema = z.object({
+const GenerateAudioSummaryOutputSchema = z.object({
   audioDataUri: z.string().describe('The generated audio as a data URI.'),
 });
 export type GenerateAudioSummaryOutput = z.infer<typeof GenerateAudioSummaryOutputSchema>;
@@ -61,14 +60,14 @@ const generateAudioSummaryFlow = ai.defineFlow(
     inputSchema: GenerateAudioSummaryInputSchema,
     outputSchema: GenerateAudioSummaryOutputSchema,
   },
-  async ({text}) => {
-    const {media} = await ai.generate({
+  async ({ text }) => {
+    const { media } = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: {voiceName: 'Algenib'},
+            prebuiltVoiceConfig: { voiceName: 'Algenib' },
           },
         },
       },
@@ -83,7 +82,7 @@ const generateAudioSummaryFlow = ai.defineFlow(
       media.url.substring(media.url.indexOf(',') + 1),
       'base64'
     );
-    
+
     const wavBase64 = await toWav(audioBuffer);
 
     return {

@@ -11,6 +11,7 @@ export interface City {
     lng: number;
     imageUrl?: string;
     bestPlaceName?: string;
+    attractions?: string[];
 }
 
 export const CITIES: City[] = [
@@ -24,7 +25,8 @@ export const CITIES: City[] = [
         lat: 28.6139,
         lng: 77.2090,
         imageUrl: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?q=80&w=1000&auto=format&fit=crop',
-        bestPlaceName: 'India Gate'
+        bestPlaceName: 'India Gate',
+        attractions: ['Red Fort', 'Qutub Minar', 'India Gate', 'Lotus Temple']
     },
     {
         name: 'Mumbai',
@@ -91,6 +93,7 @@ export const CITIES: City[] = [
         airportCode: 'AMD',
         lat: 23.0225,
         lng: 72.5714,
+        attractions: ['Sabarmati Ashram', 'Adalaj Stepwell', 'Kankaria Lake', 'Sidi Saiyyed Mosque']
     },
     {
         name: 'Pune',
@@ -110,7 +113,8 @@ export const CITIES: City[] = [
         lat: 26.9124,
         lng: 75.7873,
         imageUrl: 'https://images.unsplash.com/photo-1524230572899-a752b3835840?q=80&w=1000&auto=format&fit=crop',
-        bestPlaceName: 'Hawa Mahal'
+        bestPlaceName: 'Hawa Mahal',
+        attractions: ['Amber Fort', 'Hawa Mahal', 'City Palace', 'Jantar Mantar']
     },
     {
         name: 'Lucknow',
@@ -329,6 +333,7 @@ export const CITIES: City[] = [
         stationCodes: ['HW'],
         lat: 29.9457,
         lng: 78.1642,
+        attractions: ['Har Ki Pauri', 'Ganga Aarti', 'Mansa Devi Temple', 'Chandi Devi Temple']
     },
     {
         name: 'Rishikesh',

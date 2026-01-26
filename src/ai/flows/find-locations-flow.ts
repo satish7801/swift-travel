@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A flow to find location suggestions using an LLM.
  *
@@ -8,8 +6,8 @@
  * - FindLocationsOutput - The return type for the findLocations function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const FindLocationsInputSchema = z.object({
   query: z.string().describe("The user's location search query."),
@@ -27,8 +25,8 @@ export async function findLocations(input: FindLocationsInput): Promise<FindLoca
 
 const prompt = ai.definePrompt({
   name: 'findLocationsPrompt',
-  input: {schema: FindLocationsInputSchema},
-  output: {schema: FindLocationsOutputSchema},
+  input: { schema: FindLocationsInputSchema },
+  output: { schema: FindLocationsOutputSchema },
   prompt: `You are a location search assistant for a travel app that primarily operates within India.
 A user has provided the search query: {{{query}}}.
 
@@ -48,7 +46,7 @@ const findLocationsFlow = ai.defineFlow(
     outputSchema: FindLocationsOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     if (!output) {
       return { locations: [] };
     }

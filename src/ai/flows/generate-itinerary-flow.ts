@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A flow to generate a multi-day travel itinerary.
  *
@@ -8,11 +6,12 @@
  * - GenerateItineraryOutput - The return type for the generateItinerary function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const GenerateItineraryInputSchema = z.object({
-  city: z.string().describe('The main city for the trip.'),
+  originCity: z.string().describe('The starting city for the trip.'),
+  city: z.string().describe('The main destination city for the trip.'),
   attractions: z
     .array(z.string())
     .describe('A list of attractions selected by the user.'),
@@ -48,12 +47,15 @@ export async function generateItinerary(
 
 const prompt = ai.definePrompt({
   name: 'generateItineraryPrompt',
-  input: {schema: GenerateItineraryInputSchema},
-  output: {schema: GenerateItineraryOutputSchema},
-  prompt: `You are an expert travel planner. A user wants a multi-day itinerary for a trip to {{{city}}}.
-They have selected the following attractions to visit: {{{attractions}}}.
+  input: { schema: GenerateItineraryInputSchema },
+  output: { schema: GenerateItineraryOutputSchema },
+  prompt: `You are an expert travel planner. A user wants a multi-day itinerary for a trip starting from {{{originCity}}} to {{{city}}}.
+They have selected the following attractions to visit: {{{json attractions}}}.
 
 Your task is to create a logical and efficient day-by-day itinerary that includes all the selected attractions.
+
+**Important Instructions:**
+- **Day 1 MUST start with travel from {{{originCity}}} to {{{city}}}.** Include this as the first activity.
 - Group attractions that are geographically close to each other on the same day.
 - Create a realistic plan. Don't cram too many activities into a single day.
 - Estimate the total number of days required to comfortably visit all selected attractions. This should be the value for 'totalDays'.
@@ -70,7 +72,7 @@ const generateItineraryFlow = ai.defineFlow(
     outputSchema: GenerateItineraryOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     if (!output) {
       throw new Error('Failed to generate itinerary.');
     }

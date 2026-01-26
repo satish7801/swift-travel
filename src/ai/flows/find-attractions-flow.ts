@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A flow to find popular attractions in a given city.
  *
@@ -8,8 +6,8 @@
  * - FindAttractionsOutput - The return type for the findAttractions function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const FindAttractionsInputSchema = z.object({
   city: z.string().describe('The city to find attractions for.'),
@@ -33,8 +31,8 @@ export async function findAttractions(
 
 const prompt = ai.definePrompt({
   name: 'findAttractionsPrompt',
-  input: {schema: FindAttractionsInputSchema},
-  output: {schema: FindAttractionsOutputSchema},
+  input: { schema: FindAttractionsInputSchema },
+  output: { schema: FindAttractionsOutputSchema },
   prompt: `You are a travel expert. A user wants to find the most popular attractions in {{{city}}}.
 
 Your task is to return a list of 10 to 15 of the most popular and most-visited tourist attractions in that city.
@@ -52,9 +50,9 @@ const findAttractionsFlow = ai.defineFlow(
     outputSchema: FindAttractionsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     if (!output) {
-      return {attractions: []};
+      return { attractions: [] };
     }
     return output;
   }

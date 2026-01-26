@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview This flow confirms the user's location choice using an LLM.
  *
@@ -8,8 +6,8 @@
  * - ConfirmLocationChoiceOutput - The return type for the confirmLocationChoice function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const ConfirmLocationChoiceInputSchema = z.object({
   locationName: z
@@ -33,8 +31,8 @@ export async function confirmLocationChoice(input: ConfirmLocationChoiceInput): 
 
 const confirmLocationChoicePrompt = ai.definePrompt({
   name: 'confirmLocationChoicePrompt',
-  input: {schema: ConfirmLocationChoiceInputSchema},
-  output: {schema: ConfirmLocationChoiceOutputSchema},
+  input: { schema: ConfirmLocationChoiceInputSchema },
+  output: { schema: ConfirmLocationChoiceOutputSchema },
   prompt: `You are a travel assistant. The user has provided a location name, {{{locationName}}}, and a list of possible matching locations, {{{possibleLocations}}}. Determine if the location name is valid, and if so, confirm the location name. Respond in JSON format.
 
 If the location name is not valid, set isValidLocation to false, and do not set confirmedLocationName.
@@ -49,7 +47,7 @@ const confirmLocationChoiceFlow = ai.defineFlow(
     outputSchema: ConfirmLocationChoiceOutputSchema,
   },
   async input => {
-    const {output} = await confirmLocationChoicePrompt(input);
+    const { output } = await confirmLocationChoicePrompt(input);
     return output!;
   }
 );
