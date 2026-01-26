@@ -16,12 +16,20 @@ interface SearchFormProps {
   form: UseFormReturn<SearchFilters>;
   onSearch: (filters: SearchFilters) => void;
   isSearching: boolean;
+  onModeChange?: (mode: TransportMode) => void;
+  selectedMode?: TransportMode;
 }
 
 type TransportMode = 'all' | 'flight' | 'train' | 'bus' | 'car';
 
-export default function SearchForm({ form, onSearch, isSearching }: SearchFormProps) {
-  const [selectedMode, setSelectedMode] = React.useState<TransportMode>('all');
+export default function SearchForm({ form, onSearch, isSearching, onModeChange, selectedMode: externalMode }: SearchFormProps) {
+  const [internalMode, setInternalMode] = React.useState<TransportMode>('all');
+  const selectedMode = externalMode ?? internalMode;
+
+  const handleModeChange = (mode: TransportMode) => {
+    setInternalMode(mode);
+    onModeChange?.(mode);
+  };
 
   const modes = [
     { id: 'all', label: 'All', icon: null, color: 'bg-gradient-to-r from-primary to-accent' },
@@ -39,7 +47,7 @@ export default function SearchForm({ form, onSearch, isSearching }: SearchFormPr
           <button
             key={mode.id}
             type="button"
-            onClick={() => setSelectedMode(mode.id)}
+            onClick={() => handleModeChange(mode.id)}
             className={cn(
               "flex-1 py-2.5 px-3 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2",
               selectedMode === mode.id

@@ -72,11 +72,12 @@ export async function searchRoutesAction(
         const searchDate = date || new Date();
 
         // Map preferences to modes if present
-        const modes: ('flight' | 'train' | 'bus' | 'car')[] = [];
-        if (preferences?.preferredMode && preferences.preferredMode !== 'any') {
-            modes.push(preferences.preferredMode);
+        const modes: ('flight' | 'train' | 'bus')[] = [];
+        const preferredMode = preferences?.preferredMode;
+        if (preferredMode && preferredMode !== 'any' && (preferredMode === 'flight' || preferredMode === 'train' || preferredMode === 'bus')) {
+            modes.push(preferredMode);
         } else {
-            modes.push('flight', 'train', 'bus', 'car');
+            modes.push('flight', 'train', 'bus');
         }
 
         const routes = await providerRegistry.searchAll({

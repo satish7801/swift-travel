@@ -12,6 +12,7 @@ import { createMultiCityItinerary } from './actions';
 import { estimateDistance } from '@/lib/data/trip-planner';
 import { CITIES } from '@/lib/data/cities';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 interface Stop {
     id: string;
@@ -21,6 +22,7 @@ interface Stop {
 
 export default function MultiStopTripPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [stops, setStops] = React.useState<Stop[]>([
         { id: '1', location: '', date: new Date() },
         { id: '2', location: '', date: undefined },
@@ -38,7 +40,10 @@ export default function MultiStopTripPage() {
     };
 
     const removeStop = (id: string) => {
-        if (stops.length <= 2) return;
+        if (stops.length <= 2) {
+            toast({ variant: 'destructive', title: 'Minimum 2 stops required.' });
+            return;
+        }
         setStops(stops.filter(stop => stop.id !== id));
     };
 
@@ -87,7 +92,7 @@ export default function MultiStopTripPage() {
     const handleSearch = async () => {
         const emptyStops = stops.filter(s => !s.location.trim());
         if (emptyStops.length > 0) {
-            alert('Please fill in all locations');
+            toast({ variant: 'destructive', title: 'Please fill in all locations.' });
             return;
         }
 
@@ -104,13 +109,16 @@ export default function MultiStopTripPage() {
             // 3. Create Itinerary
             const result = await createMultiCityItinerary(filledStops);
 
-            if (result.success) {
-                // Redirect to planner/results
-                router.push(`/planner?created=${result.id}`);
+            if (result.success && result.id) {
+                toast({ title: 'Trip Planned!', description: 'Redirecting to your itinerary...' });
+                // Redirect to plans page instead of planner
+                router.push(`/plans/${result.id}`);
+            } else {
+                toast({ variant: 'destructive', title: 'Failed to create itinerary', description: result.error || 'Please try again.' });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert('Failed to plan trip. Please try again.');
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to plan trip. Please try again.' });
         } finally {
             setIsSearching(false);
         }

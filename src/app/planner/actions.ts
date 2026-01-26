@@ -1,5 +1,8 @@
 'use server';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { saveItinerary } from '@/lib/db/itineraries';
 import { findAttractions } from '@/ai/flows/find-attractions-flow';
 import { generateItinerary, type GenerateItineraryOutput } from '@/ai/flows/generate-itinerary-flow';
 import { generateItineraryOverview } from '@/ai/flows/generate-itinerary-overview-flow';
@@ -51,5 +54,70 @@ export async function generateItineraryAction(city: string, attractions: string[
     } catch (error: any) {
         console.error('Generate itinerary error:', error);
         return { error: error.message || 'Failed to generate itinerary.' };
+    }
+}
+
+/**
+ * Generate AI itinerary and save to database
+ */
+export async function generateAndSaveItinerary(cities: string[], startDate: string, endDate: string) {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+        return { success: false, error: "Please sign in to create an itinerary." };
+    }
+
+    if (!cities || cities.length < 1) {
+        return { success: false, error: "Please select at least one city." };
+    }
+
+    if (!startDate || !endDate) {
+        return { success: false, error: "Please select both start and end dates." };
+    }
+
+    const city = cities[0]; // Primary city
+    const attractions = cities.length > 1
+        ? cities.map(c => `Visit ${c}`)
+        : [`Explore ${city}`, `Local sightseeing in ${city}`, `Cultural experiences in ${city}`];
+
+    try {
+        // Step 1: Generate structured itinerary
+        const itineraryData = await generateItinerary({
+            city,
+            attractions,
+        });
+
+        if (!itineraryData) {
+            throw new Error('Failed to generate itinerary.');
+        }
+
+        // Step 2: Generate rich overview
+        const overview = await generateItineraryOverview({
+            city,
+            itinerary: itineraryData,
+        });
+
+        if (!overview) {
+            throw new Error('Failed to generate itinerary overview.');
+        }
+
+        // Step 3: Save to database
+        const title = overview.title || `${itineraryData.totalDays} Days in ${city}`;
+        const summary = itineraryData.summary;
+
+        const id = await saveItinerary(
+            session.user.id,
+            city,
+            title,
+            summary,
+            itineraryData.totalDays,
+            itineraryData,
+            overview
+        );
+
+        return { success: true, id };
+    } catch (error: any) {
+        console.error("Failed to generate AI itinerary:", error);
+        return { success: false, error: error.message || "Failed to generate itinerary. Please try again." };
     }
 }

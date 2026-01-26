@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from 'react';
-import { useFormStatus, useActionState } from 'react';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import Image from 'next/image';
 import { AlertCircle, Bot, Send, User } from 'lucide-react';
 import { askChatbot, type ChatState } from '@/app/actions';

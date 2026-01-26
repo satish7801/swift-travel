@@ -14,6 +14,9 @@ import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { AuthGuard } from '@/components/auth-guard';
 import { getNearbyPlaces, checkFeasibility, getPopularDestinations } from '@/lib/data/trip-planner';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { generateAndSaveItinerary } from './actions';
 import type { City } from '@/lib/data/cities';
 
 interface SelectedCity {
@@ -30,6 +33,8 @@ export default function PlannerPage() {
 }
 
 function PlannerContent() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [selectedCities, setSelectedCities] = React.useState<SelectedCity[]>([]);
   const [startDate, setStartDate] = React.useState<Date | undefined>(new Date());
   const [endDate, setEndDate] = React.useState<Date | undefined>();
@@ -70,8 +75,14 @@ function PlannerContent() {
   }, [selectedCities, startDate, endDate]);
 
   const addCity = (cityName: string) => {
-    if (!cityName.trim()) return;
-    if (selectedCities.some(c => c.name.toLowerCase() === cityName.toLowerCase())) return;
+    if (!cityName.trim()) {
+      toast({ variant: 'destructive', title: 'Please enter a city name.' });
+      return;
+    }
+    if (selectedCities.some(c => c.name.toLowerCase() === cityName.toLowerCase())) {
+      toast({ variant: 'destructive', title: 'City already added.' });
+      return;
+    }
 
     setSelectedCities([...selectedCities, { name: cityName, addedAt: Date.now() }]);
     setCurrentInput('');
@@ -82,11 +93,40 @@ function PlannerContent() {
   };
 
   const handleGenerate = async () => {
-    if (selectedCities.length < 1 || !startDate || !endDate) return;
+    // Validation with toast feedback
+    if (selectedCities.length < 1) {
+      toast({ variant: 'destructive', title: 'Please select at least one city.' });
+      return;
+    }
+    if (!startDate) {
+      toast({ variant: 'destructive', title: 'Please select a start date.' });
+      return;
+    }
+    if (!endDate) {
+      toast({ variant: 'destructive', title: 'Please select an end date.' });
+      return;
+    }
+
     setIsGenerating(true);
-    // TODO: Call AI to generate itinerary
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsGenerating(false);
+
+    try {
+      const result = await generateAndSaveItinerary(
+        selectedCities.map(c => c.name),
+        startDate.toISOString(),
+        endDate.toISOString()
+      );
+
+      if (result.success && result.id) {
+        toast({ title: 'Itinerary Created!', description: 'Redirecting to your plan...' });
+        router.push(`/plans/${result.id}`);
+      } else {
+        toast({ variant: 'destructive', title: 'Failed to generate', description: result.error || 'Please try again.' });
+      }
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong.' });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const tripDays = startDate && endDate ? differenceInDays(endDate, startDate) + 1 : 0;
