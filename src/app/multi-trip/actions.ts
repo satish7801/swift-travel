@@ -18,7 +18,7 @@ interface Stop {
     selectedAttractions?: string[];
 }
 
-export async function createMultiCityItinerary(stops: Stop[]) {
+export async function createMultiCityItinerary(stops: Stop[], preferences?: { avoidNightTravel?: boolean }) {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
@@ -56,7 +56,8 @@ export async function createMultiCityItinerary(stops: Stop[]) {
     // Generate AI itinerary based on stops
     try {
         const generatedItinerary = await generateMultiCityItinerary({
-            stops: stopsWithTravel
+            stops: stopsWithTravel,
+            preferences: preferences
         });
 
         // Overview for the rich view

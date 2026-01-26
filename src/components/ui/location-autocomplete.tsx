@@ -54,19 +54,21 @@ export function LocationAutocomplete({
         const fetchCities = async () => {
             setIsLoading(true);
             try {
-                // 1. Fetch from Nominatim
-                const apiResults = await searchCities(debouncedQuery);
+                // 1. Fetch from Nominatim (Restricted to India)
+                const apiResults = await searchCities(debouncedQuery, "in");
 
                 // 2. Map to City interface and enrich with static data if matched
                 const mappedResults: City[] = apiResults.map((result) => {
-                    // Try to find in static DB for extra metadata (images, codes)
-                    const staticMatch = CITIES.find(c =>
-                        c.name.toLowerCase() === result.display_name.split(',')[0].toLowerCase() ||
-                        c.aliases.includes(result.display_name.split(',')[0].toLowerCase())
-                    );
+                    const resultName = result.display_name.toLowerCase();
+                    const stateName = result.address?.state || result.address?.country || '';
+
+                    // Improved matching logic: Check if static city name is contained in the result name OR aliases are contained
+                    const staticMatch = CITIES.find(c => {
+                        const cName = c.name.toLowerCase();
+                        return resultName.includes(cName) || c.aliases.some(alias => resultName.includes(alias.toLowerCase()));
+                    });
 
                     const cityName = result.address?.city || result.address?.town || result.address?.village || result.display_name.split(',')[0];
-                    const stateName = result.address?.state || result.address?.country || '';
 
                     if (staticMatch) {
                         return {
@@ -83,7 +85,8 @@ export function LocationAutocomplete({
                         stationCodes: [],
                         lat: parseFloat(result.lat),
                         lng: parseFloat(result.lon),
-                        // No image/codes for purely dynamic results
+                        // Fallback generic image for unknown cities to maintain UI consistency
+                        imageUrl: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=400&auto=format&fit=crop"
                     };
                 });
 
@@ -157,27 +160,24 @@ export function LocationAutocomplete({
                                     className="w-full px-3 py-2.5 text-left hover:bg-accent/10 transition-colors flex items-start gap-3"
                                 >
                                     {city.imageUrl ? (
-                                        <div className="relative h-12 w-16 rounded-lg overflow-hidden shrink-0 border border-white/10 glass shadow-sm">
+                                        <div className="relative h-16 w-16 rounded-lg overflow-hidden shrink-0 shadow-sm group-hover:scale-105 transition-transform duration-300">
                                             <img
                                                 src={city.imageUrl}
                                                 alt={city.name}
                                                 className="h-full w-full object-cover"
                                             />
-                                            <div className="absolute inset-x-0 bottom-0 bg-black/40 backdrop-blur-sm py-0.5 text-[8px] text-white text-center font-bold uppercase tracking-wider">
-                                                {city.bestPlaceName || 'Explore'}
-                                            </div>
                                         </div>
                                     ) : (
-                                        <div className="h-12 w-16 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-white/5">
-                                            <MapPin className="h-5 w-5 text-primary" />
+                                        <div className="h-16 w-16 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
+                                            <MapPin className="h-6 w-6 text-primary/40" />
                                         </div>
                                     )}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-semibold text-foreground flex items-center gap-2">
+                                    <div className="flex-1 min-w-0 py-1">
+                                        <div className="font-bold text-lg text-foreground flex items-center gap-2 leading-none mb-1">
                                             {city.name}
-                                            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 uppercase tracking-tight opacity-60">
-                                                {city.state}
-                                            </span>
+                                        </div>
+                                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                            {city.state}
                                         </div>
                                         <div className="text-sm text-muted-foreground truncate">
                                             {city.stationCodes.length > 0 && (

@@ -24,6 +24,9 @@ const StopSchema = z.object({
 
 const GenerateMultiCityItineraryInputSchema = z.object({
     stops: z.array(StopSchema).describe('List of stops, where the first is the origin.'),
+    preferences: z.object({
+        avoidNightTravel: z.boolean().optional().describe('If true, schedule travel strictly between 06:00 and 22:00.'),
+    }).optional(),
 });
 export type GenerateMultiCityItineraryInput = z.infer<typeof GenerateMultiCityItineraryInputSchema>;
 
@@ -65,8 +68,12 @@ const prompt = ai.definePrompt({
   1.  **Day 1 MUST start with travel.** The user starts at the first stop (Origin) and travels to the second stop.
       -   Activity 1 should be: "Travel from [Origin] to [Second Stop] via [appropriate mode]".
       -   **Time of Day Logic:**
-          -   If \`period\` is "Night", Day 1 is "Overnight Journey". The user arrives on Day 2 Morning.
-          -   If \`period\` is "Morning", user travels during the day and arrives same day (if short distance) or late evening.
+          -   If \`period\` is "Night", Day 1 is "Overnight Journey" (UNLESS avoidNightTravel is true).
+          -   **Avoid Night Travel Rule:** If \`preferences.avoidNightTravel\` is TRUE:
+              -   ALL travel must happen between 06:00 and 22:00.
+              -   If a journey is > 10 hours, you MUST split it into two days with an overnight stop in a major city along the route, OR just list "Day 1: Travel Part 1 (Day), Overnight Stay, Day 2: Travel Part 2 (Day)".
+              -   Do NOT schedule overnight trains or buses.
+          -   If \`period\` is "Morning", user travels during the day.
       -   Include check-in and evening relaxation/light exploration for Day 1 only if arriving early.
   
   2.  **Destinations & Attractions:**

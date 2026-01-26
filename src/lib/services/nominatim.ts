@@ -21,12 +21,20 @@ export interface NominatimResult {
     };
 }
 
-export async function searchCities(query: string): Promise<NominatimResult[]> {
+const CACHE = new Map<string, NominatimResult[]>();
+
+export async function searchCities(query: string, countryCodes?: string): Promise<NominatimResult[]> {
     if (!query || query.length < 2) return [];
 
+    const cacheKey = `${query}:${countryCodes || 'all'}`;
+    if (CACHE.has(cacheKey)) {
+        return CACHE.get(cacheKey)!;
+    }
+
     try {
+        const countryParam = countryCodes ? `&countrycodes=${countryCodes}` : '';
         const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&featuretype=city`,
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&featuretype=city${countryParam}`,
             {
                 headers: {
                     'User-Agent': 'SwiftTravel/1.0' // Required by Nominatim policy
@@ -39,6 +47,7 @@ export async function searchCities(query: string): Promise<NominatimResult[]> {
         }
 
         const data = await response.json();
+        CACHE.set(cacheKey, data);
         return data;
     } catch (error) {
         console.error("Nominatim search error:", error);

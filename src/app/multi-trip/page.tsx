@@ -1,9 +1,28 @@
 "use client";
 
 import * as React from 'react';
-import { Plus, Trash2, GripVertical, MapPin, Calendar, Search, Loader2, ArrowDown, Sparkles, Clock, Map } from 'lucide-react';
+import { Plus, GripVertical, MapPin, Calendar, Search, Loader2, ArrowDown, Sparkles, Clock, Map, Sun } from 'lucide-react';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { SortableStopCard } from '@/components/trip-planner/sortable-stop-card';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Button } from '@/components/ui/button';
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -13,11 +32,10 @@ import { cn } from '@/lib/utils';
 import { createMultiCityItinerary } from './actions';
 import { estimateDistance } from '@/lib/data/trip-planner';
 import { CITIES } from '@/lib/data/cities';
-import { findCitiesOnRoute } from '@/lib/route-utils';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
-interface Stop {
+export interface Stop {
     id: string;
     location: string;
     date: Date | undefined;
@@ -32,7 +50,29 @@ export default function MultiStopTripPage() {
         { id: '1', location: '', date: new Date() },
         { id: '2', location: '', date: undefined },
     ]);
+
     const [isSearching, setIsSearching] = React.useState(false);
+    const [avoidNightTravel, setAvoidNightTravel] = React.useState(false);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setStops((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    }
+
 
     const addStop = () => {
         const newStop: Stop = {
@@ -132,7 +172,7 @@ export default function MultiStopTripPage() {
             await new Promise(resolve => setTimeout(resolve, 1500));
 
             // 3. Create Itinerary
-            const result = await createMultiCityItinerary(filledStops);
+            const result = await createMultiCityItinerary(filledStops, { avoidNightTravel });
 
             if (result.success && result.id) {
                 toast({ title: 'Trip Planned!', description: 'Redirecting to your itinerary...' });
@@ -147,6 +187,17 @@ export default function MultiStopTripPage() {
         } finally {
             setIsSearching(false);
         }
+    };
+
+    const addIntermediaryStop = (index: number, location: string) => {
+        const newStop: Stop = {
+            id: Date.now().toString(),
+            location: location,
+            date: undefined
+        };
+        const newStops = [...stops];
+        newStops.splice(index, 0, newStop);
+        setStops(newStops);
     };
 
     return (
@@ -172,217 +223,33 @@ export default function MultiStopTripPage() {
                     {/* Trip Builder Card */}
                     <div className="card-premium p-6 md:p-8 mb-8">
                         <div className="space-y-6">
-                            {stops.map((stop, index) => (
-                                <div key={stop.id} className="relative">
-                                    {/* Smart Route Suggestions - Render BEFORE the current card so it appears "on the way" */}
-                                    {index > 0 && stops[index - 1].location && stop.location && (
-                                        <div className="mb-6 ml-14 relative z-10">
-                                            {(() => {
-                                                const suggestions = findCitiesOnRoute(stops[index - 1].location, stop.location);
-                                                const filteredSuggestions = suggestions.filter(s => !stops.some(existing => existing.location.toLowerCase() === s.name.toLowerCase()));
-
-                                                if (filteredSuggestions.length === 0) return null;
-
-                                                return (
-                                                    <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-3">
-                                                        <div className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">
-                                                            <Map className="h-3 w-3" />
-                                                            Places to visit from {stops[index - 1].location} to {stop.location}:
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {filteredSuggestions.map(city => (
-                                                                <Badge
-                                                                    key={city.name}
-                                                                    variant="secondary"
-                                                                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                                                                    onClick={() => {
-                                                                        const newStop: Stop = {
-                                                                            id: Date.now().toString(),
-                                                                            location: city.name,
-                                                                            date: undefined
-                                                                        };
-                                                                        const newStops = [...stops];
-                                                                        newStops.splice(index, 0, newStop);
-                                                                        setStops(newStops);
-                                                                    }}
-                                                                >
-                                                                    <Plus className="h-3 w-3 mr-1" />
-                                                                    {city.name}
-                                                                </Badge>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <SortableContext
+                                    items={stops}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {stops.map((stop, index) => (
+                                        <div key={stop.id} className="mb-6">
+                                            <SortableStopCard
+                                                stop={stop}
+                                                index={index}
+                                                isFirst={index === 0}
+                                                isLast={index === stops.length - 1}
+                                                updateStop={updateStop}
+                                                removeStop={removeStop}
+                                                toggleAttraction={toggleAttraction}
+                                                stopsLength={stops.length}
+                                                previousLocation={index > 0 ? stops[index - 1].location : undefined}
+                                                onAddStopAt={addIntermediaryStop}
+                                            />
                                         </div>
-                                    )}
-
-                                    {/* Connection line */}
-                                    {index < stops.length - 1 && (
-                                        <div className="absolute left-5 top-16 bottom-0 w-0.5 bg-gradient-to-b from-primary to-accent" />
-                                    )}
-
-                                    <div className="flex items-start gap-4">
-                                        {/* Step indicator */}
-                                        <div className="flex flex-col items-center shrink-0">
-                                            <div className={cn(
-                                                "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-lg text-sm",
-                                                index === 0 ? "bg-emerald-500" :
-                                                    index === stops.length - 1 ? "bg-rose-500" :
-                                                        "bg-gradient-to-br from-primary to-accent"
-                                            )}>
-                                                {index + 1}
-                                            </div>
-                                            {index < stops.length - 1 && (
-                                                <ArrowDown className="h-4 w-4 text-muted-foreground mt-2" />
-                                            )}
-                                        </div>
-
-                                        {/* Stop details */}
-                                        <div className="flex-1 bg-muted/30 rounded-xl p-4 border border-border/50">
-                                            <div className="text-xs font-medium text-muted-foreground mb-3">
-                                                {index === 0 ? '🚀 Starting Point' :
-                                                    index === stops.length - 1 ? '🏁 Final Destination' :
-                                                        `📍 Stop ${index}`}
-                                            </div>
-
-                                            <div className="grid md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                                                        Location
-                                                    </label>
-                                                    <LocationAutocomplete
-                                                        value={stop.location}
-                                                        onChange={(value) => updateStop(stop.id, 'location', value)}
-                                                        placeholder="Enter city"
-                                                    />
-                                                </div>
-
-                                                <div>
-                                                </div>
-
-                                                <div>
-                                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                                                        {index === 0 ? 'Departure' : 'Arrival'} Time
-                                                    </label>
-                                                    <div className="flex gap-2">
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    className={cn(
-                                                                        "flex-1 justify-start text-left font-normal h-12",
-                                                                        !stop.date && "text-muted-foreground"
-                                                                    )}
-                                                                >
-                                                                    <Calendar className="mr-2 h-4 w-4" />
-                                                                    {stop.date ? format(stop.date, "MMM d") : "Date"}
-                                                                </Button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0">
-                                                                <CalendarComponent
-                                                                    mode="single"
-                                                                    selected={stop.date}
-                                                                    onSelect={(date) => updateStop(stop.id, 'date', date)}
-                                                                    disabled={(date) => date < new Date()}
-                                                                    initialFocus
-                                                                />
-                                                            </PopoverContent>
-                                                        </Popover>
-
-                                                        <Select
-                                                            value={stop.period}
-                                                            onValueChange={(value) => updateStop(stop.id, 'period', value)}
-                                                        >
-                                                            <SelectTrigger className="w-[110px] h-12">
-                                                                <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                                                                <SelectValue placeholder="Time" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Morning">Morning</SelectItem>
-                                                                <SelectItem value="Afternoon">Afternoon</SelectItem>
-                                                                <SelectItem value="Evening">Evening</SelectItem>
-                                                                <SelectItem value="Night">Night</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* City Attractions Preview */}
-                                            {stop.location && (() => {
-                                                const cityData = CITIES.find(c => c.name.toLowerCase() === stop.location.toLowerCase() || c.aliases.includes(stop.location.toLowerCase()));
-                                                if (cityData?.attractions && cityData.attractions.length > 0) {
-                                                    return (
-                                                        <div className="mt-3 pt-3 border-t border-border/50">
-                                                            <div className="flex items-start gap-2">
-                                                                <Sparkles className="h-3 w-3 text-amber-500 mt-1 shrink-0" />
-                                                                <div className="flex-1">
-                                                                    <div className="flex items-center justify-between mb-1.5">
-                                                                        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Famous Spots</p>
-                                                                        <a
-                                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.location)}`}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"
-                                                                        >
-                                                                            View on Map <MapPin className="h-3 w-3" />
-                                                                        </a>
-                                                                    </div>
-                                                                    <div className="flex flex-wrap gap-1.5">
-                                                                        {cityData.attractions.slice(0, 6).map(attr => {
-                                                                            const isSelected = stop.selectedAttractions?.includes(attr);
-                                                                            return (
-                                                                                <Badge
-                                                                                    key={attr}
-                                                                                    variant={isSelected ? "default" : "outline"}
-                                                                                    className={cn(
-                                                                                        "cursor-pointer transition-all text-[10px]",
-                                                                                        isSelected
-                                                                                            ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"
-                                                                                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground border-dashed"
-                                                                                    )}
-                                                                                    onClick={() => toggleAttraction(stop.id, attr)}
-                                                                                >
-                                                                                    {attr} {isSelected && "✓"}
-                                                                                </Badge>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                    {stop.selectedAttractions && stop.selectedAttractions.length > 2 && (
-                                                                        <p className="text-[10px] text-amber-600 mt-1.5 italic">
-                                                                            * Enhanced stay duration added for detailed visit.
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            })()}
-                                        </div>
-
-                                        {/* Remove button - Consistent layout */}
-                                        <div className="flex flex-col justify-center">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className={cn(
-                                                    "text-muted-foreground hover:text-destructive shrink-0",
-                                                    (index === 0 || stops.length <= 2) && "opacity-20 pointer-events-none" // 2 stops minimum
-                                                )}
-                                                onClick={() => removeStop(stop.id)}
-                                                disabled={index === 0 || stops.length <= 2}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-
-
-                                </div>
-                            ))}
+                                    ))}
+                                </SortableContext>
+                            </DndContext>
 
                             {/* Add Stop Button */}
                             <div className="flex justify-center py-4">
@@ -394,6 +261,24 @@ export default function MultiStopTripPage() {
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Stop
                                 </Button>
+                            </div>
+
+                            {/* Preferences */}
+                            <div className="flex items-center justify-between bg-muted/30 p-4 rounded-xl border border-border/50 mb-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                                        <Sun className="h-4 w-4 text-orange-500" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <Label htmlFor="day-travel" className="font-medium cursor-pointer">Day Travel Only</Label>
+                                        <p className="text-xs text-muted-foreground">Avoid overnight journeys</p>
+                                    </div>
+                                </div>
+                                <Switch
+                                    id="day-travel"
+                                    checked={avoidNightTravel}
+                                    onCheckedChange={setAvoidNightTravel}
+                                />
                             </div>
 
                             {/* Search Button */}
