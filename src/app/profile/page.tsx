@@ -78,7 +78,7 @@ function ProfileContent() {
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <main className="flex-1">
         <div className="min-h-[60vh] flex items-center justify-center">
@@ -107,7 +107,7 @@ function ProfileContent() {
   }
 
   const transportModes = [
-    { value: 'any', label: 'Any', icon: null },
+    { value: 'any', label: 'Any', icon: null, color: '' },
     { value: 'flight', label: 'Flights', icon: Plane, color: 'text-blue-500' },
     { value: 'train', label: 'Trains', icon: Train, color: 'text-orange-500' },
     { value: 'bus', label: 'Buses', icon: Bus, color: 'text-emerald-500' },
@@ -124,7 +124,6 @@ function ProfileContent() {
     <main className="flex-1">
       {/* Header */}
       <section className="relative py-12 md:py-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
         <div className="container mx-auto px-4 relative">
           <div className="flex items-center gap-4">
             <div className="relative">

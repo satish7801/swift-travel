@@ -42,6 +42,8 @@ export default function Home() {
     }
   }, [user]);
 
+  const [selectedCity, setSelectedCity] = React.useState<City | null>(null);
+
   const [transportModes, setTransportModes] = React.useState<Set<TransportMode>>(new Set(['flight', 'train', 'bus']));
   const [maxPrice, setMaxPrice] = React.useState<number | undefined>(undefined);
   const [numStops, setNumStops] = React.useState<number>(-1);
@@ -152,27 +154,36 @@ export default function Home() {
     <main className="flex-1 overflow-x-hidden">
       {/* Hero Section */}
       <section className="relative min-h-[85vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 hero-mesh" />
-
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl float" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/20 rounded-full blur-3xl float" style={{ animationDelay: '-3s' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-500/10 rounded-full blur-3xl" />
+        {/* Dynamic Background Image */}
+        <div className="absolute inset-0 transition-all duration-1000 ease-in-out">
+          {selectedCity?.imageUrl ? (
+            <div className="absolute inset-0">
+              <img
+                src={selectedCity.imageUrl}
+                alt={selectedCity.name}
+                className="w-full h-full object-cover animate-in fade-in zoom-in-110 duration-1000"
+              />
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+            </div>
+          ) : (
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl float" />
+              <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl float" style={{ animationDelay: '-3s' }} />
+            </div>
+          )}
         </div>
 
         {/* Content */}
         <div className="relative z-10 container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-dark text-white/80 text-sm">
-              <Sparkles className="w-4 h-4 text-accent" />
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-foreground text-sm font-medium">
+              <Sparkles className="w-4 h-4 text-primary" />
               <span>AI-Powered Travel Planning</span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-edvast text-white leading-tight">
               Your Journey,{' '}
               <span className="gradient-text-light">Reimagined</span>
             </h1>
@@ -186,22 +197,27 @@ export default function Home() {
             {/* Transport Icons */}
             <div className="flex items-center justify-center gap-6 md:gap-8">
               {[
-                { icon: Train, label: 'Trains', color: 'text-orange-400' },
-                { icon: Bus, label: 'Buses', color: 'text-emerald-400' },
-                { icon: Plane, label: 'Flights', color: 'text-blue-400' },
+                { icon: Train, label: 'Trains', color: 'text-orange-500' },
+                { icon: Bus, label: 'Buses', color: 'text-emerald-500' },
+                { icon: Plane, label: 'Flights', color: 'text-blue-500' },
               ].map(({ icon: Icon, label, color }) => (
-                <div key={label} className="flex flex-col items-center gap-2 group">
-                  <div className={`p-4 rounded-2xl glass-dark group-hover:scale-110 transition-transform ${color}`}>
+                <div key={label} className="flex flex-col items-center gap-2 group cursor-pointer">
+                  <div className={`p-4 rounded-2xl glass group-hover:scale-110 group-hover:shadow-lg transition-all duration-300 ${color}`}>
                     <Icon className="w-6 h-6 md:w-8 md:h-8" />
                   </div>
-                  <span className="text-sm text-white/60">{label}</span>
+                  <span className="text-sm font-medium opacity-70 group-hover:opacity-100 transition-opacity">{label}</span>
                 </div>
               ))}
             </div>
 
             {/* Search Form */}
             <div className="search-section pt-8">
-              <SearchForm form={form} onSearch={handleSearch} isSearching={isSearching} />
+              <SearchForm
+                form={form}
+                onSearch={handleSearch}
+                isSearching={isSearching}
+                onCitySelect={(city) => setSelectedCity(city)}
+              />
             </div>
 
             {/* Quick Stats */}

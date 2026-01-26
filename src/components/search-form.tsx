@@ -12,17 +12,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LocationAutocomplete } from "@/components/ui/location-autocomplete";
 import type { SearchFilters } from '@/lib/schemas';
 
+import type { City } from '@/lib/data/cities';
+
 interface SearchFormProps {
   form: UseFormReturn<SearchFilters>;
   onSearch: (filters: SearchFilters) => void;
   isSearching: boolean;
   onModeChange?: (mode: TransportMode) => void;
+  onCitySelect?: (city: City) => void;
   selectedMode?: TransportMode;
 }
 
 type TransportMode = 'all' | 'flight' | 'train' | 'bus' | 'car';
 
-export default function SearchForm({ form, onSearch, isSearching, onModeChange, selectedMode: externalMode }: SearchFormProps) {
+export default function SearchForm({ form, onSearch, isSearching, onModeChange, onCitySelect, selectedMode: externalMode }: SearchFormProps) {
   const [internalMode, setInternalMode] = React.useState<TransportMode>('all');
   const selectedMode = externalMode ?? internalMode;
 
@@ -40,7 +43,7 @@ export default function SearchForm({ form, onSearch, isSearching, onModeChange, 
   ] as const;
 
   return (
-    <div className="glass-dark rounded-3xl p-2 md:p-3 shadow-2xl max-w-4xl mx-auto">
+    <div className="glass rounded-3xl p-2 md:p-3 shadow-2xl max-w-4xl mx-auto backdrop-blur-2xl">
       {/* Transport Mode Tabs */}
       <div className="flex gap-1 md:gap-2 mb-4 p-1 bg-white/5 rounded-2xl">
         {modes.map((mode) => (
@@ -49,10 +52,10 @@ export default function SearchForm({ form, onSearch, isSearching, onModeChange, 
             type="button"
             onClick={() => handleModeChange(mode.id)}
             className={cn(
-              "flex-1 py-2.5 px-3 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2",
+              "flex-1 py-2.5 px-3 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2",
               selectedMode === mode.id
                 ? `${mode.color} text-white shadow-lg`
-                : "text-white/60 hover:text-white hover:bg-white/10"
+                : "text-foreground/60 hover:text-foreground hover:bg-white/10"
             )}
           >
             {mode.icon && <mode.icon className="h-4 w-4" />}
@@ -76,8 +79,9 @@ export default function SearchForm({ form, onSearch, isSearching, onModeChange, 
                     <LocationAutocomplete
                       value={field.value}
                       onChange={field.onChange}
+                      onCitySelect={onCitySelect}
                       placeholder="Where from?"
-                      className="pl-8 h-14 bg-white/10 border-white/10 text-white placeholder:text-white/40 rounded-xl focus:bg-white/15 focus:border-primary/50"
+                      className="pl-8 h-14 input-glass bg-white/5 border-white/10 text-foreground placeholder:text-foreground/40 rounded-xl focus:bg-white/10"
                     />
                   </FormControl>
                 </div>
@@ -114,8 +118,9 @@ export default function SearchForm({ form, onSearch, isSearching, onModeChange, 
                     <LocationAutocomplete
                       value={field.value}
                       onChange={field.onChange}
+                      onCitySelect={onCitySelect}
                       placeholder="Where to?"
-                      className="pl-8 h-14 bg-white/10 border-white/10 text-white placeholder:text-white/40 rounded-xl focus:bg-white/15 focus:border-primary/50"
+                      className="pl-8 h-14 input-glass bg-white/5 border-white/10 text-foreground placeholder:text-foreground/40 rounded-xl focus:bg-white/10"
                     />
                   </FormControl>
                 </div>
@@ -136,8 +141,8 @@ export default function SearchForm({ form, onSearch, isSearching, onModeChange, 
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full h-14 justify-start text-left font-normal bg-white/10 border border-white/10 text-white rounded-xl hover:bg-white/15",
-                          !field.value && "text-white/40"
+                          "w-full h-14 justify-start text-left font-normal input-glass bg-white/5 border border-white/10 text-foreground rounded-xl hover:bg-white/10",
+                          !field.value && "text-foreground/40"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />

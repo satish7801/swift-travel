@@ -9,6 +9,8 @@ export interface City {
     airportCode?: string;
     lat: number;
     lng: number;
+    imageUrl?: string;
+    bestPlaceName?: string;
 }
 
 export const CITIES: City[] = [
@@ -21,6 +23,8 @@ export const CITIES: City[] = [
         airportCode: 'DEL',
         lat: 28.6139,
         lng: 77.2090,
+        imageUrl: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'India Gate'
     },
     {
         name: 'Mumbai',
@@ -30,6 +34,8 @@ export const CITIES: City[] = [
         airportCode: 'BOM',
         lat: 19.0760,
         lng: 72.8777,
+        imageUrl: 'https://images.unsplash.com/photo-1570160897040-30430aac2eb1?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'Gateway of India'
     },
     {
         name: 'Kolkata',
@@ -39,6 +45,8 @@ export const CITIES: City[] = [
         airportCode: 'CCU',
         lat: 22.5726,
         lng: 88.3639,
+        imageUrl: 'https://images.unsplash.com/photo-1558431382-27e39cbef4bc?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'Victoria Memorial'
     },
     {
         name: 'Chennai',
@@ -48,6 +56,8 @@ export const CITIES: City[] = [
         airportCode: 'MAA',
         lat: 13.0827,
         lng: 80.2707,
+        imageUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'Marina Beach'
     },
     {
         name: 'Bengaluru',
@@ -57,6 +67,8 @@ export const CITIES: City[] = [
         airportCode: 'BLR',
         lat: 12.9716,
         lng: 77.5946,
+        imageUrl: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'Lalbagh Botanical Garden'
     },
     {
         name: 'Hyderabad',
@@ -66,6 +78,8 @@ export const CITIES: City[] = [
         airportCode: 'HYD',
         lat: 17.3850,
         lng: 78.4867,
+        imageUrl: 'https://images.unsplash.com/photo-1572451479139-6a308211d8be?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'Charminar'
     },
 
     // Major Cities
@@ -95,6 +109,8 @@ export const CITIES: City[] = [
         airportCode: 'JAI',
         lat: 26.9124,
         lng: 75.7873,
+        imageUrl: 'https://images.unsplash.com/photo-1524230572899-a752b3835840?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'Hawa Mahal'
     },
     {
         name: 'Lucknow',
@@ -121,6 +137,8 @@ export const CITIES: City[] = [
         airportCode: 'VNS',
         lat: 25.3176,
         lng: 82.9739,
+        imageUrl: 'https://images.unsplash.com/photo-1561359313-0639aad49ca6?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'Ganga Ghat'
     },
     {
         name: 'Patna',
@@ -274,6 +292,8 @@ export const CITIES: City[] = [
         airportCode: 'AGR',
         lat: 27.1767,
         lng: 78.0081,
+        imageUrl: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?q=80&w=1000&auto=format&fit=crop',
+        bestPlaceName: 'Taj Mahal'
     },
     {
         name: 'Amritsar',

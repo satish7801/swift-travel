@@ -84,10 +84,9 @@ function TripsContent() {
     <main className="flex-1">
       {/* Header */}
       <section className="relative py-12 md:py-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
         <div className="container mx-auto px-4 relative">
           <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl glass flex items-center justify-center">
               <Briefcase className="h-6 w-6 text-primary" />
             </div>
             <div>

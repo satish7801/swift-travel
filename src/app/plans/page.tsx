@@ -83,11 +83,10 @@ function PlansContent() {
     <main className="flex-1">
       {/* Header */}
       <section className="relative py-12 md:py-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5" />
         <div className="container mx-auto px-4 relative">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl glass flex items-center justify-center">
                 <ClipboardList className="h-6 w-6 text-accent" />
               </div>
               <div>

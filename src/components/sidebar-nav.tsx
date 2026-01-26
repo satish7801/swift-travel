@@ -19,9 +19,9 @@ export function SidebarNav() {
   ];
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className="gap-3">
       {navItems.map((item) => (
-        <SidebarMenuItem key={item.href}>
+        <SidebarMenuItem key={item.href} className="mx-2">
           <SidebarMenuButton
             asChild
             isActive={pathname === item.href}

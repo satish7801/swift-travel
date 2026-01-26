@@ -1,4 +1,4 @@
-import type {Config} from 'tailwindcss';
+import type { Config } from 'tailwindcss';
 
 export default {
   darkMode: ['class'],
@@ -12,6 +12,10 @@ export default {
       fontFamily: {
         body: ['Inter', 'sans-serif'],
         headline: ['Space Grotesk', 'sans-serif'],
+        tech: ['Oxanium', 'monospace'],
+        logo: ['Evil Empire', 'cursive'],
+        aesthetic: ['Playfair Display', 'serif'],
+        edvast: ['Righteous', 'cursive'],
         code: ['monospace'],
       },
       colors: {

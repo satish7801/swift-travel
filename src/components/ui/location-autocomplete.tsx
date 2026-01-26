@@ -9,6 +9,7 @@ import { CITIES, type City } from "@/lib/data/cities";
 interface LocationAutocompleteProps {
     value: string;
     onChange: (value: string) => void;
+    onCitySelect?: (city: City) => void;
     placeholder?: string;
     className?: string;
 }
@@ -16,6 +17,7 @@ interface LocationAutocompleteProps {
 export function LocationAutocomplete({
     value,
     onChange,
+    onCitySelect,
     placeholder = "Enter city or station",
     className,
 }: LocationAutocompleteProps) {
@@ -68,6 +70,7 @@ export function LocationAutocomplete({
         const displayValue = city.name;
         setQuery(displayValue);
         onChange(displayValue);
+        onCitySelect?.(city);
         setIsOpen(false);
         inputRef.current?.blur();
     };
@@ -106,11 +109,30 @@ export function LocationAutocomplete({
                                     onClick={() => handleSelect(city)}
                                     className="w-full px-3 py-2.5 text-left hover:bg-accent/10 transition-colors flex items-start gap-3"
                                 >
-                                    <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                                    {city.imageUrl ? (
+                                        <div className="relative h-12 w-16 rounded-lg overflow-hidden shrink-0 border border-white/10 glass shadow-sm">
+                                            <img
+                                                src={city.imageUrl}
+                                                alt={city.name}
+                                                className="h-full w-full object-cover"
+                                            />
+                                            <div className="absolute inset-x-0 bottom-0 bg-black/40 backdrop-blur-sm py-0.5 text-[8px] text-white text-center font-bold uppercase tracking-wider">
+                                                {city.bestPlaceName || 'Explore'}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="h-12 w-16 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-white/5">
+                                            <MapPin className="h-5 w-5 text-primary" />
+                                        </div>
+                                    )}
                                     <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-foreground">{city.name}</div>
+                                        <div className="font-semibold text-foreground flex items-center gap-2">
+                                            {city.name}
+                                            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 uppercase tracking-tight opacity-60">
+                                                {city.state}
+                                            </span>
+                                        </div>
                                         <div className="text-sm text-muted-foreground truncate">
-                                            {city.state}
                                             {city.stationCodes.length > 0 && (
                                                 <span className="ml-2">
                                                     <Train className="inline h-3 w-3 mr-0.5" />

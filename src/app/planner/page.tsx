@@ -135,11 +135,10 @@ function PlannerContent() {
     <main className="flex-1">
       {/* Header */}
       <section className="relative py-12 md:py-16 overflow-hidden">
-        <div className="absolute inset-0 hero-mesh" />
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center text-white space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-dark text-white/80 text-sm mb-4">
-              <Sparkles className="w-4 h-4 text-accent" />
+          <div className="max-w-3xl mx-auto text-center text-foreground space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-foreground/80 text-sm mb-4">
+              <Sparkles className="w-4 h-4 text-primary" />
               <span>AI-Powered Planning</span>
             </div>
             <h1 className="text-3xl md:text-5xl font-bold">
